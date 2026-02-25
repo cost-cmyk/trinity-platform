@@ -592,6 +592,167 @@ def parse_xlsx_file(file_content: bytes, filename: str) -> List[dict]:
     
     return ventes
 
+@api_router.post("/imports/preview")
+async def preview_import_file(
+    file: UploadFile = File(...),
+    restaurant_id: str = Form(None),
+    date_vente: str = Form(None)
+):
+    """Prévisualise un fichier de ventes SANS l'importer - pour contrôle"""
+    
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Nom de fichier manquant")
+    
+    filename = file.filename.lower()
+    if not filename.endswith(('.xls', '.xlsx')):
+        raise HTTPException(status_code=400, detail="Format non supporté. Utilisez .xls ou .xlsx")
+    
+    content = await file.read()
+    restaurants = await db.restaurants.find({}, {"_id": 0}).to_list(100)
+    
+    # Détecter restaurant et date
+    detected_restaurant_id = restaurant_id
+    detected_date = date_vente
+    
+    if not detected_restaurant_id:
+        detected_resto = detect_restaurant_from_filename(file.filename, restaurants)
+        if detected_resto:
+            detected_restaurant_id = detected_resto["id"]
+    
+    if not detected_date:
+        detected_date = detect_date_from_filename(file.filename)
+        if not detected_date:
+            detected_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    # Parser le fichier
+    if filename.endswith('.xls'):
+        ventes_data = parse_xls_file(content, file.filename)
+    else:
+        ventes_data = parse_xlsx_file(content, file.filename)
+    
+    # Analyser les données
+    ca_total = sum(v["ca_ttc"] for v in ventes_data)
+    total_quantite = sum(v["quantite"] for v in ventes_data)
+    total_remise = sum(v["remise"] for v in ventes_data)
+    
+    # Détecter les remises négatives (bug PSW)
+    remises_negatives = [v for v in ventes_data if v["remise"] < 0]
+    
+    # Compter nourriture vs boisson
+    nb_food = sum(1 for v in ventes_data if v["is_food"])
+    nb_drink = sum(1 for v in ventes_data if not v["is_food"])
+    
+    # Ajouter un index à chaque ligne pour l'exclusion
+    lignes = []
+    for idx, v in enumerate(ventes_data):
+        lignes.append({
+            "idx": idx,
+            "produit_nom": v["produit_nom"],
+            "quantite": v["quantite"],
+            "prix_unitaire": v["prix_unitaire"],
+            "ca_ttc": v["ca_ttc"],
+            "remise": v["remise"],
+            "is_food": v["is_food"],
+            "is_remise_negative": v["remise"] < 0,
+            "exclu": False
+        })
+    
+    # Restaurant info
+    restaurant_info = None
+    if detected_restaurant_id:
+        resto = next((r for r in restaurants if r["id"] == detected_restaurant_id), None)
+        if resto:
+            restaurant_info = {"id": resto["id"], "nom": resto["nom"], "couleur": resto["couleur"]}
+    
+    return {
+        "filename": file.filename,
+        "detected_restaurant_id": detected_restaurant_id,
+        "detected_date": detected_date,
+        "restaurant": restaurant_info,
+        "nb_lignes": len(ventes_data),
+        "ca_total": round(ca_total, 2),
+        "total_quantite": total_quantite,
+        "total_remise": round(total_remise, 2),
+        "nb_remises_negatives": len(remises_negatives),
+        "nb_food": nb_food,
+        "nb_drink": nb_drink,
+        "lignes": lignes
+    }
+
+@api_router.post("/imports/confirm")
+async def confirm_import(data: dict):
+    """Confirme l'import après prévisualisation avec les lignes exclues"""
+    
+    restaurant_id = data.get("restaurant_id")
+    date_vente = data.get("date_vente")
+    lignes = data.get("lignes", [])
+    filename = data.get("filename", "import.xls")
+    
+    if not restaurant_id:
+        raise HTTPException(status_code=400, detail="Restaurant requis")
+    
+    restaurant = await db.restaurants.find_one({"id": restaurant_id})
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant non trouvé")
+    
+    # Filtrer les lignes non exclues
+    lignes_actives = [l for l in lignes if not l.get("exclu", False)]
+    
+    if not lignes_actives:
+        raise HTTPException(status_code=400, detail="Aucune ligne à importer (toutes exclues)")
+    
+    # Créer l'import
+    import_id = str(uuid.uuid4())
+    import_record = {
+        "id": import_id,
+        "type": "ventes",
+        "restaurant_id": restaurant_id,
+        "nom_fichier": filename,
+        "date_import": datetime.now(timezone.utc).isoformat(),
+        "statut": "importé",
+        "nb_lignes": len(lignes_actives),
+        "nb_exclues": len(lignes) - len(lignes_actives),
+        "erreurs": []
+    }
+    await db.imports.insert_one(import_record)
+    
+    # Créer les ventes
+    ventes_docs = []
+    for l in lignes_actives:
+        vente = {
+            "id": str(uuid.uuid4()),
+            "restaurant_id": restaurant_id,
+            "date_vente": date_vente,
+            "produit_nom": l["produit_nom"],
+            "produit_carte_id": None,
+            "quantite": l["quantite"],
+            "prix_unitaire": l["prix_unitaire"],
+            "ca_ttc": l["ca_ttc"],
+            "remise": l["remise"],
+            "is_food": l["is_food"],
+            "import_id": import_id,
+            "exclu": False,
+            "annotation": l.get("annotation", ""),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        ventes_docs.append(vente)
+    
+    if ventes_docs:
+        await db.ventes.insert_many(ventes_docs)
+    
+    ca_total = sum(v["ca_ttc"] for v in ventes_docs)
+    
+    return {
+        "success": True,
+        "import_id": import_id,
+        "restaurant": restaurant["nom"],
+        "date_vente": date_vente,
+        "nb_lignes": len(ventes_docs),
+        "nb_exclues": len(lignes) - len(lignes_actives),
+        "ca_total": round(ca_total, 2),
+        "message": f"{len(ventes_docs)} ventes importées pour {restaurant['nom']}"
+    }
+
 @api_router.post("/imports/upload")
 async def upload_and_import_file(
     file: UploadFile = File(...),
