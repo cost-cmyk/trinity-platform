@@ -1226,11 +1226,11 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
                   <div className="text-xs text-muted-foreground">Coût Total</div>
-                  <div className="font-mono text-lg">{fmt(costs.coutTotal, 2)} €</div>
+                  <div className="font-mono text-lg">{fmtPrice(costs.coutTotal)}</div>
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">Coût/Portion</div>
-                  <div className="font-mono text-lg">{fmt(costs.coutPortion, 2)} €</div>
+                  <div className="font-mono text-lg">{fmtPrice(costs.coutPortion)}</div>
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">Food Cost</div>
