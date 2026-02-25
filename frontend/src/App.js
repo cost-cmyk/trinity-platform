@@ -1175,7 +1175,7 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                   <div key={idx} className="flex items-center gap-2 text-sm bg-secondary/50 rounded p-2">
                     <span className="flex-1">{ing.nom}</span>
                     <span className="font-mono">{ing.quantite} {ing.unite}</span>
-                    <span className="font-mono text-muted-foreground">{fmt(ing.cout_ligne, 2)} €</span>
+                    <span className="font-mono text-muted-foreground">{fmtPrice(ing.cout_ligne)}</span>
                     <button onClick={() => removeIngredient(idx)} className="text-destructive hover:bg-destructive/20 p-1 rounded">
                       <X className="w-4 h-4" />
                     </button>
