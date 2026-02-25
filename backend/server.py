@@ -523,20 +523,21 @@ def parse_xlsx_file(file_content: bytes, filename: str) -> List[dict]:
         workbook = openpyxl.load_workbook(io.BytesIO(file_content), data_only=True)
         sheet = workbook.active
         
-        # Convertir en liste de listes pour réutiliser la logique
         rows = list(sheet.iter_rows(values_only=True))
         
         if not rows:
             return ventes
         
-        # Même logique que XLS pour trouver l'en-tête
+        # Colonnes attendues PSW - étendu pour le format réel
         expected_cols = {
             'designation': ['désignation', 'designation', 'produit', 'article', 'libellé', 'libelle', 'nom'],
-            'quantite': ['qté', 'qte', 'quantité', 'quantite', 'qty', 'nb'],
-            'prix_unitaire': ['pu', 'p.u.', 'pu ttc', 'prix unitaire', 'prix unit'],
-            'ca_ttc': ['ca ttc', 'ca', 'montant', 'total'],
-            'remise': ['remise', 'rem', 'réduction', 'reduction'],
-            'famille': ['famille', 'catégorie', 'categorie', 'type']
+            'quantite': ['qté', 'qte', 'quantité', 'quantite', 'qty', 'nb', 'qté vendue', 'qte vendue'],
+            'prix_unitaire': ['pu', 'p.u.', 'pu ttc', 'prix unitaire', 'prix unit', 'prix de vente unitaire', 'prix de vente'],
+            'ca_ttc': ['ca ttc', 'ca  ttc', 'cattc', 'montant ttc', 'total ttc'],
+            'ca_ht': ['ca ht', 'caht', 'montant ht'],
+            'remise': ['remise', 'rem', 'réduction', 'reduction', 'rabais', 'montant total de remise'],
+            'famille': ['famille', 'catégorie', 'categorie', 'type', 'groupe'],
+            'fournisseur': ['fournisseur', 'type produit']
         }
         
         header_row = -1
@@ -549,16 +550,26 @@ def parse_xlsx_file(file_content: bytes, filename: str) -> List[dict]:
             for col_idx, cell_value in enumerate(row_values):
                 for key, aliases in expected_cols.items():
                     if any(alias in cell_value for alias in aliases):
-                        temp_mapping[key] = col_idx
+                        if key not in temp_mapping:
+                            temp_mapping[key] = col_idx
                         break
             
-            if 'designation' in temp_mapping and ('quantite' in temp_mapping or 'ca_ttc' in temp_mapping):
+            if 'designation' in temp_mapping and 'quantite' in temp_mapping:
                 header_row = row_idx
                 col_mapping = temp_mapping
                 break
         
         if header_row == -1:
-            col_mapping = {'designation': 1, 'famille': 2, 'quantite': 3, 'prix_unitaire': 4, 'remise': 5, 'ca_ttc': 6}
+            col_mapping = {
+                'designation': 1, 
+                'quantite': 2, 
+                'ca_ht': 3,
+                'ca_ttc': 5, 
+                'famille': 6, 
+                'fournisseur': 7,
+                'prix_unitaire': 8, 
+                'remise': 9
+            }
             header_row = 0
         
         for row_idx, row in enumerate(rows[header_row + 1:], start=header_row + 1):
@@ -581,7 +592,7 @@ def parse_xlsx_file(file_content: bytes, filename: str) -> List[dict]:
                         if isinstance(val, (int, float)):
                             return float(val)
                         try:
-                            val_str = str(val).replace('€', '').replace(' ', '').replace(',', '.').strip()
+                            val_str = str(val).replace('€', '').replace('F', '').replace(' ', '').replace(',', '.').strip()
                             return float(val_str) if val_str else default
                         except:
                             pass
@@ -590,27 +601,48 @@ def parse_xlsx_file(file_content: bytes, filename: str) -> List[dict]:
                 quantite = get_val('quantite', 0)
                 prix_unitaire = get_val('prix_unitaire', 0)
                 ca_ttc = get_val('ca_ttc', 0)
+                ca_ht = get_val('ca_ht', 0)
                 remise = get_val('remise', 0)
+                
+                # Si pas de CA TTC mais CA HT, utiliser CA HT
+                if ca_ttc == 0 and ca_ht > 0:
+                    ca_ttc = ca_ht
+                
+                # Si pas de CA TTC, calculer depuis quantité x prix unitaire
+                if ca_ttc == 0 and quantite > 0 and prix_unitaire > 0:
+                    ca_ttc = quantite * prix_unitaire
                 
                 if quantite == 0 and ca_ttc == 0:
                     continue
                 if ca_ttc < 0:
                     continue
                 
-                famille = ""
-                if 'famille' in col_mapping and col_mapping['famille'] < len(row) and row[col_mapping['famille']]:
-                    famille = str(row[col_mapping['famille']]).lower()
-                
+                # Déterminer si c'est nourriture ou boisson
                 is_food = True
-                boisson_keywords = ['boisson', 'drink', 'bière', 'vin', 'alcool', 'café', 'thé', 'soda', 'jus', 'eau', 'cocktail']
-                if any(kw in famille or kw in designation.lower() for kw in boisson_keywords):
-                    is_food = False
+                
+                # Vérifier fournisseur
+                fournisseur_col = col_mapping.get('fournisseur')
+                if fournisseur_col is not None and fournisseur_col < len(row) and row[fournisseur_col]:
+                    fournisseur = str(row[fournisseur_col]).lower().strip()
+                    if 'boisson' in fournisseur:
+                        is_food = False
+                    elif 'nourriture' in fournisseur or 'nourr' in fournisseur:
+                        is_food = True
+                else:
+                    famille = ""
+                    if 'famille' in col_mapping and col_mapping['famille'] < len(row) and row[col_mapping['famille']]:
+                        famille = str(row[col_mapping['famille']]).lower()
+                    
+                    boisson_keywords = ['boisson', 'drink', 'bière', 'vin', 'alcool', 'café', 'thé', 'soda', 
+                                       'jus', 'eau', 'cocktail', 'mocktail', 'soft', 'pression', 'verre']
+                    if any(kw in famille or kw in designation.lower() for kw in boisson_keywords):
+                        is_food = False
                 
                 ventes.append({
                     'produit_nom': designation,
                     'quantite': int(quantite) if quantite else 1,
                     'prix_unitaire': prix_unitaire,
-                    'ca_ttc': ca_ttc if ca_ttc else (quantite * prix_unitaire),
+                    'ca_ttc': ca_ttc,
                     'remise': remise,
                     'is_food': is_food
                 })
