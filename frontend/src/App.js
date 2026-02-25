@@ -1259,6 +1259,21 @@ const ImportModule = ({ restaurants, onRefresh }) => {
   const [dragOver, setDragOver] = useState(false);
   const [files, setFiles] = useState([]);
   const [importing, setImporting] = useState(false);
+  const [imports, setImports] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Charger l'historique des imports
+  useEffect(() => {
+    const loadImports = async () => {
+      try {
+        const res = await axios.get(`${API}/imports`);
+        setImports(res.data);
+      } catch (err) {
+        console.error("Erreur chargement imports:", err);
+      }
+    };
+    loadImports();
+  }, []);
 
   const handleDrop = (e) => {
     e.preventDefault();
@@ -1269,13 +1284,11 @@ const ImportModule = ({ restaurants, onRefresh }) => {
 
   const processFiles = (newFiles) => {
     const processed = newFiles.map((file) => {
-      // Try to detect restaurant and date from filename
-      // Format attendu: NOM_RESTAURANT_ventes_du_YYYYMMDD_au_YYYYMMDD.xls
       const name = file.name.toLowerCase();
       let detectedRestaurant = null;
       let detectedDate = null;
 
-      // Simple detection
+      // Détection du restaurant
       for (const resto of restaurants) {
         if (name.includes(resto.code.toLowerCase()) || name.includes(resto.nom.toLowerCase())) {
           detectedRestaurant = resto;
@@ -1283,7 +1296,7 @@ const ImportModule = ({ restaurants, onRefresh }) => {
         }
       }
 
-      // Date detection (YYYYMMDD)
+      // Détection de la date (YYYYMMDD)
       const dateMatch = name.match(/(\d{4})(\d{2})(\d{2})/);
       if (dateMatch) {
         detectedDate = `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`;
@@ -1294,9 +1307,10 @@ const ImportModule = ({ restaurants, onRefresh }) => {
         name: file.name,
         size: file.size,
         restaurant: detectedRestaurant,
-        date: detectedDate,
-        status: "pending", // pending, processing, success, error
-        error: null
+        date: detectedDate || new Date().toISOString().split('T')[0],
+        status: "pending",
+        error: null,
+        result: null
       };
     });
 
@@ -1311,176 +1325,265 @@ const ImportModule = ({ restaurants, onRefresh }) => {
     setFiles(files.filter((_, i) => i !== idx));
   };
 
-  const simulateImport = async () => {
-    // Note: Real import would parse XLS files and send to backend
-    // This is a simulation for the MVP
+  const uploadFiles = async () => {
     setImporting(true);
 
     for (let i = 0; i < files.length; i++) {
-      if (files[i].status !== "pending") continue;
+      const f = files[i];
+      if (f.status !== "pending") continue;
       
       updateFile(i, { status: "processing" });
       
-      // Simulate processing time
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      if (!files[i].restaurant) {
-        updateFile(i, { status: "error", error: "Restaurant non détecté" });
-      } else {
-        // Create import record
-        try {
-          await axios.post(`${API}/imports`, {
-            type: "ventes",
-            restaurant_id: files[i].restaurant.id,
-            nom_fichier: files[i].name,
-            statut: "importé",
-            nb_lignes: Math.floor(Math.random() * 100) + 50 // Simulated
-          });
-          updateFile(i, { status: "success" });
-        } catch (err) {
-          updateFile(i, { status: "error", error: err.message });
-        }
+      if (!f.restaurant) {
+        updateFile(i, { status: "error", error: "Sélectionnez un restaurant" });
+        continue;
+      }
+
+      try {
+        // Créer FormData pour l'upload
+        const formData = new FormData();
+        formData.append('file', f.file);
+        formData.append('restaurant_id', f.restaurant.id);
+        formData.append('date_vente', f.date);
+
+        const response = await axios.post(`${API}/imports/upload`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+
+        updateFile(i, { 
+          status: "success", 
+          result: response.data 
+        });
+        
+        toast.success(`${response.data.nb_lignes} ventes importées - CA: ${fmt(response.data.ca_total, 2)} €`);
+        
+      } catch (err) {
+        const errorMsg = err.response?.data?.detail || err.message;
+        updateFile(i, { status: "error", error: errorMsg });
+        toast.error(`Erreur: ${errorMsg}`);
       }
     }
 
     setImporting(false);
-    toast.success("Import terminé");
     onRefresh();
+    
+    // Recharger l'historique
+    try {
+      const res = await axios.get(`${API}/imports`);
+      setImports(res.data);
+    } catch (err) {}
+  };
+
+  const deleteImport = async (importId) => {
+    if (!window.confirm("Supprimer cet import et toutes ses ventes ?")) return;
+    try {
+      await axios.delete(`${API}/imports/${importId}`);
+      setImports(imports.filter(i => i.id !== importId));
+      toast.success("Import supprimé");
+      onRefresh();
+    } catch (err) {
+      toast.error("Erreur: " + (err.response?.data?.detail || err.message));
+    }
   };
 
   const pendingCount = files.filter(f => f.status === "pending").length;
   const successCount = files.filter(f => f.status === "success").length;
   const errorCount = files.filter(f => f.status === "error").length;
 
+  const getRestaurantById = (id) => restaurants.find(r => r.id === id);
+
   return (
     <div className="space-y-6" data-testid="import-module">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Import des Ventes</h1>
-        <p className="text-muted-foreground">Importez vos fichiers de ventes PSW (.xls)</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Import des Ventes</h1>
+          <p className="text-muted-foreground">Importez vos fichiers de ventes PSW (.xls, .xlsx)</p>
+        </div>
+        <Button 
+          variant="secondary" 
+          onClick={() => setShowHistory(!showHistory)}
+          data-testid="toggle-history-btn"
+        >
+          {showHistory ? "Nouvel import" : `Historique (${imports.length})`}
+        </Button>
       </div>
 
-      {/* Drop Zone */}
-      <div
-        className={`drop-zone ${dragOver ? 'dragover' : ''}`}
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={handleDrop}
-        onClick={() => document.getElementById('file-input').click()}
-        data-testid="drop-zone"
-      >
-        <UploadCloud className="w-12 h-12 text-muted-foreground mb-4" />
-        <p className="text-lg font-medium mb-2">Glissez vos fichiers ici</p>
-        <p className="text-sm text-muted-foreground">ou cliquez pour sélectionner</p>
-        <p className="text-xs text-muted-foreground mt-2">Format: .xls (export PSW)</p>
-        <input
-          id="file-input"
-          type="file"
-          accept=".xls,.xlsx"
-          multiple
-          onChange={handleDrop}
-          className="hidden"
-        />
-      </div>
-
-      {/* Files List */}
-      {files.length > 0 && (
+      {showHistory ? (
+        /* Historique des imports */
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex gap-4 text-sm">
-              <span>{pendingCount} en attente</span>
-              {successCount > 0 && <span className="text-emerald-400">{successCount} importés</span>}
-              {errorCount > 0 && <span className="text-red-400">{errorCount} erreurs</span>}
-            </div>
-            {pendingCount > 0 && (
-              <Button onClick={simulateImport} disabled={importing} data-testid="import-btn">
-                {importing ? "Import en cours..." : `Importer ${pendingCount} fichier${pendingCount > 1 ? 's' : ''}`}
-              </Button>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            {files.map((f, idx) => (
-              <div 
-                key={idx} 
-                className={`trinity-card flex items-center gap-4 ${f.status === 'error' ? 'border-red-500/50' : f.status === 'success' ? 'border-emerald-500/50' : ''}`}
-              >
-                <FileSpreadsheet className="w-8 h-8 text-muted-foreground flex-shrink-0" />
-                
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{f.name}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {(f.size / 1024).toFixed(1)} KB
+          {imports.length > 0 ? (
+            imports.map((imp) => {
+              const resto = getRestaurantById(imp.restaurant_id);
+              return (
+                <div key={imp.id} className="trinity-card flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div 
+                      className="w-1 h-12 rounded-full" 
+                      style={{ backgroundColor: resto?.couleur || '#666' }}
+                    />
+                    <div>
+                      <div className="font-medium">{imp.nom_fichier}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {resto?.nom} • {new Date(imp.date_import).toLocaleDateString('fr-FR')}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <div className="font-mono text-lg">{imp.nb_lignes}</div>
+                      <div className="text-xs text-muted-foreground">lignes</div>
+                    </div>
+                    <Pill type={imp.statut === "importé" ? "success" : "warning"}>
+                      {imp.statut}
+                    </Pill>
+                    <button 
+                      onClick={() => deleteImport(imp.id)}
+                      className="p-2 hover:bg-destructive/20 rounded text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-
-                <Select
-                  value={f.restaurant?.id || ""}
-                  onChange={(v) => updateFile(idx, { restaurant: restaurants.find(r => r.id === v) })}
-                  options={restaurants.map(r => ({ value: r.id, label: r.nom }))}
-                  placeholder="Restaurant"
-                  className="w-40"
-                />
-
-                <Input
-                  type="date"
-                  value={f.date || ""}
-                  onChange={(v) => updateFile(idx, { date: v })}
-                  className="w-40"
-                />
-
-                <div className="flex items-center gap-2">
-                  {f.status === "pending" && (
-                    <span className="text-xs text-muted-foreground">En attente</span>
-                  )}
-                  {f.status === "processing" && (
-                    <span className="text-xs text-amber-400 animate-pulse">Import...</span>
-                  )}
-                  {f.status === "success" && (
-                    <Check className="w-5 h-5 text-emerald-400" />
-                  )}
-                  {f.status === "error" && (
-                    <div className="flex items-center gap-1 text-red-400">
-                      <AlertCircle className="w-5 h-5" />
-                      <span className="text-xs">{f.error}</span>
-                    </div>
-                  )}
-                </div>
-
-                <button 
-                  onClick={() => removeFile(idx)}
-                  className="p-1 hover:bg-destructive/20 rounded text-destructive"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-
-          {files.length > 0 && (
-            <Button 
-              variant="ghost" 
-              onClick={() => setFiles([])}
-              className="text-muted-foreground"
-            >
-              Effacer tout
-            </Button>
+              );
+            })
+          ) : (
+            <EmptyState
+              icon={FileSpreadsheet}
+              title="Aucun import"
+              description="Vos imports apparaîtront ici"
+            />
           )}
         </div>
-      )}
+      ) : (
+        /* Zone d'import */
+        <>
+          <div
+            className={`drop-zone ${dragOver ? 'dragover' : ''}`}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            onClick={() => document.getElementById('file-input').click()}
+            data-testid="drop-zone"
+          >
+            <UploadCloud className="w-12 h-12 text-muted-foreground mb-4" />
+            <p className="text-lg font-medium mb-2">Glissez vos fichiers ici</p>
+            <p className="text-sm text-muted-foreground">ou cliquez pour sélectionner</p>
+            <p className="text-xs text-muted-foreground mt-2">Format: .xls ou .xlsx (export PSW)</p>
+            <input
+              id="file-input"
+              type="file"
+              accept=".xls,.xlsx"
+              multiple
+              onChange={handleDrop}
+              className="hidden"
+            />
+          </div>
 
-      {/* Help */}
-      <div className="trinity-card bg-secondary/30">
-        <h4 className="font-medium mb-2">Format de fichier attendu</h4>
-        <p className="text-sm text-muted-foreground mb-2">
-          Exportez vos ventes depuis PSW au format .xls avec le nommage suivant :
-        </p>
-        <code className="text-xs bg-background px-2 py-1 rounded">
-          NOM_RESTAURANT_ventes_du_YYYYMMDD_au_YYYYMMDD.xls
-        </code>
-        <p className="text-xs text-muted-foreground mt-2">
-          Le restaurant et la date seront automatiquement détectés depuis le nom du fichier.
-        </p>
-      </div>
+          {/* Liste des fichiers */}
+          {files.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex gap-4 text-sm">
+                  <span>{pendingCount} en attente</span>
+                  {successCount > 0 && <span className="text-emerald-400">{successCount} importés</span>}
+                  {errorCount > 0 && <span className="text-red-400">{errorCount} erreurs</span>}
+                </div>
+                {pendingCount > 0 && (
+                  <Button onClick={uploadFiles} disabled={importing} data-testid="import-btn">
+                    {importing ? "Import en cours..." : `Importer ${pendingCount} fichier${pendingCount > 1 ? 's' : ''}`}
+                  </Button>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                {files.map((f, idx) => (
+                  <div 
+                    key={idx} 
+                    className={`trinity-card flex items-center gap-4 ${f.status === 'error' ? 'border-red-500/50' : f.status === 'success' ? 'border-emerald-500/50' : ''}`}
+                  >
+                    <FileSpreadsheet className="w-8 h-8 text-muted-foreground flex-shrink-0" />
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{f.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {(f.size / 1024).toFixed(1)} KB
+                        {f.result && (
+                          <span className="ml-2 text-emerald-400">
+                            • {f.result.nb_lignes} ventes • {fmt(f.result.ca_total, 2)} €
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <Select
+                      value={f.restaurant?.id || ""}
+                      onChange={(v) => updateFile(idx, { restaurant: restaurants.find(r => r.id === v) })}
+                      options={restaurants.map(r => ({ value: r.id, label: r.nom }))}
+                      placeholder="Restaurant *"
+                      className="w-44"
+                    />
+
+                    <Input
+                      type="date"
+                      value={f.date || ""}
+                      onChange={(v) => updateFile(idx, { date: v })}
+                      className="w-40"
+                    />
+
+                    <div className="flex items-center gap-2 min-w-[100px]">
+                      {f.status === "pending" && (
+                        <span className="text-xs text-muted-foreground">En attente</span>
+                      )}
+                      {f.status === "processing" && (
+                        <span className="text-xs text-amber-400 animate-pulse">Import...</span>
+                      )}
+                      {f.status === "success" && (
+                        <Check className="w-5 h-5 text-emerald-400" />
+                      )}
+                      {f.status === "error" && (
+                        <div className="flex items-center gap-1 text-red-400">
+                          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                          <span className="text-xs truncate max-w-[80px]" title={f.error}>{f.error}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <button 
+                      onClick={() => removeFile(idx)}
+                      className="p-1 hover:bg-destructive/20 rounded text-destructive"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {files.length > 0 && (
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setFiles([])}
+                  className="text-muted-foreground"
+                >
+                  Effacer tout
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* Aide format fichier */}
+          <div className="trinity-card bg-secondary/30">
+            <h4 className="font-medium mb-2">Format de fichier attendu</h4>
+            <p className="text-sm text-muted-foreground mb-2">
+              Exportez vos ventes depuis PSW au format .xls ou .xlsx. Le système détecte automatiquement les colonnes :
+            </p>
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>• <strong>Colonnes reconnues :</strong> Désignation, Quantité, PU TTC, CA TTC, Remise, Famille</p>
+              <p>• <strong>Nommage recommandé :</strong> <code className="bg-background px-1 rounded">NOM_RESTAURANT_ventes_du_YYYYMMDD.xls</code></p>
+              <p>• <strong>Remises négatives :</strong> Automatiquement exclues (bug PSW connu)</p>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
