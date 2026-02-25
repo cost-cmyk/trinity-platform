@@ -1522,7 +1522,7 @@ const ImportModule = ({ restaurants, onRefresh }) => {
                         {(f.size / 1024).toFixed(1)} KB
                         {f.result && (
                           <span className="ml-2 text-emerald-400">
-                            • {f.result.nb_lignes} ventes • {fmt(f.result.ca_total, 2)} €
+                            • {f.result.nb_lignes} ventes • {fmtPrice(f.result.ca_total)}
                           </span>
                         )}
                       </div>
