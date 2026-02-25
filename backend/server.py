@@ -712,8 +712,8 @@ async def preview_import_file(
     total_quantite = sum(v["quantite"] for v in ventes_data)
     total_remise = sum(v["remise"] for v in ventes_data)
     
-    # Détecter les remises négatives (bug PSW)
-    remises_negatives = [v for v in ventes_data if v["remise"] < 0]
+    # Compter les remises négatives corrigées (bug PSW)
+    nb_remises_negatives = sum(1 for v in ventes_data if v.get("remise_negative_corrigee", False))
     
     # Compter nourriture vs boisson
     nb_food = sum(1 for v in ventes_data if v["is_food"])
@@ -730,7 +730,7 @@ async def preview_import_file(
             "ca_ttc": v["ca_ttc"],
             "remise": v["remise"],
             "is_food": v["is_food"],
-            "is_remise_negative": v["remise"] < 0,
+            "is_remise_negative": v.get("remise_negative_corrigee", False),  # Remise était négative, corrigée à 0
             "exclu": False
         })
     
@@ -750,7 +750,7 @@ async def preview_import_file(
         "ca_total": round(ca_total, 2),
         "total_quantite": total_quantite,
         "total_remise": round(total_remise, 2),
-        "nb_remises_negatives": len(remises_negatives),
+        "nb_remises_negatives": nb_remises_negatives,
         "nb_food": nb_food,
         "nb_drink": nb_drink,
         "lignes": lignes
