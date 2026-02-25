@@ -335,7 +335,7 @@ const Dashboard = ({ stats, restaurantStats, loading }) => {
                       </div>
                     </td>
                     <td className="text-muted-foreground">{r.type}</td>
-                    <td className="text-right font-mono">{fmt(r.ca_total, 2)} €</td>
+                    <td className="text-right font-mono">{fmtPrice(r.ca_total)}</td>
                     <td className="text-right font-mono">{fmt(r.nb_ventes)}</td>
                     <td className="text-right font-mono">{r.produits_count}</td>
                     <td className="text-right font-mono">{r.fiches_count}</td>
