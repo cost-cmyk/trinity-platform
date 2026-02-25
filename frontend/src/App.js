@@ -278,7 +278,7 @@ const Dashboard = ({ stats, restaurantStats, loading }) => {
         <KPICard 
           label="Chiffre d'Affaires" 
           value={fmtK(stats.ca_total)} 
-          suffix="€" 
+          suffix="F" 
           icon={TrendingUp}
         />
         <KPICard 
