@@ -1150,7 +1150,7 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
               placeholder="Sélectionner"
             />
             <Input
-              label="Prix de vente (€)"
+              label="Prix de vente (XPF)"
               type="number"
               value={form.prix_vente}
               onChange={(v) => setForm({ ...form, prix_vente: v })}
