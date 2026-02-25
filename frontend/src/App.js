@@ -1368,7 +1368,7 @@ const ImportModule = ({ restaurants, onRefresh }) => {
           result: response.data 
         });
         
-        toast.success(`${response.data.nb_lignes} ventes importées - CA: ${fmt(response.data.ca_total, 2)} €`);
+        toast.success(`${response.data.nb_lignes} ventes importées - CA: ${fmtPrice(response.data.ca_total)}`);
         
       } catch (err) {
         const errorMsg = err.response?.data?.detail || err.message;
