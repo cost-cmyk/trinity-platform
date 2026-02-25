@@ -370,7 +370,7 @@ const Dashboard = ({ stats, restaurantStats, loading }) => {
                   </div>
                   <div className="flex items-center gap-4 mt-1">
                     <span className="text-xs text-muted-foreground">{item.quantite} vendus</span>
-                    <span className="text-xs font-mono">{fmt(item.ca, 2)} €</span>
+                    <span className="text-xs font-mono">{fmtPrice(item.ca)}</span>
                   </div>
                 </div>
                 <ProgressBar value={item.quantite} max={stats.top_ventes[0]?.quantite || 1} />
