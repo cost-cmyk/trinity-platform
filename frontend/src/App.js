@@ -723,7 +723,7 @@ const CarteModule = ({ restaurants, produits, onRefresh }) => {
                         {prod.is_food ? "Nourriture" : "Boisson"}
                       </Pill>
                     </td>
-                    <td className="text-right font-mono">{fmt(prod.prix_vente, 2)} €</td>
+                    <td className="text-right font-mono">{fmtPrice(prod.prix_vente)}</td>
                     <td>
                       <div className="flex gap-1 justify-end">
                         <button 
