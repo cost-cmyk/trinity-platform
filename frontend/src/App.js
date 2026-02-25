@@ -791,7 +791,7 @@ const CarteModule = ({ restaurants, produits, onRefresh }) => {
             placeholder="Sélectionner une catégorie"
           />
           <Input
-            label="Prix de vente TTC (€) *"
+            label="Prix de vente TTC (XPF) *"
             type="number"
             value={form.prix_vente}
             onChange={(v) => setForm({ ...form, prix_vente: v })}
