@@ -623,6 +623,11 @@ def parse_xlsx_file(file_content: bytes, filename: str) -> List[dict]:
                 if ca_ttc < 0:
                     continue
                 
+                # Remise négative = bug PSW, on la met à 0 mais on garde la ligne
+                remise_negative = remise < 0
+                if remise_negative:
+                    remise = 0
+                
                 # Déterminer si c'est nourriture ou boisson
                 is_food = True
                 
@@ -650,7 +655,8 @@ def parse_xlsx_file(file_content: bytes, filename: str) -> List[dict]:
                     'prix_unitaire': prix_unitaire,
                     'ca_ttc': ca_ttc,
                     'remise': remise,
-                    'is_food': is_food
+                    'is_food': is_food,
+                    'remise_negative_corrigee': remise_negative
                 })
                 
             except Exception as e:
