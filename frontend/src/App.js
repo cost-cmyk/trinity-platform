@@ -1274,6 +1274,14 @@ const ImportModule = ({ restaurants, onRefresh }) => {
   const [importing, setImporting] = useState(false);
   const [imports, setImports] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
+  
+  // État de prévisualisation
+  const [preview, setPreview] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewFile, setPreviewFile] = useState(null);
+  const [excluded, setExcluded] = useState({});
+  const [annotations, setAnnotations] = useState({});
+  const [editingNote, setEditingNote] = useState(null);
 
   // Charger l'historique des imports
   useEffect(() => {
@@ -1288,11 +1296,51 @@ const ImportModule = ({ restaurants, onRefresh }) => {
     loadImports();
   }, []);
 
-  const handleDrop = (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault();
     setDragOver(false);
     const droppedFiles = Array.from(e.dataTransfer?.files || e.target.files || []);
-    processFiles(droppedFiles);
+    
+    if (droppedFiles.length === 1) {
+      // Un seul fichier = prévisualisation directe
+      await loadPreview(droppedFiles[0]);
+    } else {
+      // Plusieurs fichiers = mode file d'attente
+      processFiles(droppedFiles);
+    }
+  };
+
+  const loadPreview = async (file) => {
+    setPreviewLoading(true);
+    setPreviewFile(file);
+    setExcluded({});
+    setAnnotations({});
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await axios.post(`${API}/imports/preview`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      setPreview(response.data);
+      
+      // Auto-exclure les remises négatives
+      const autoExcluded = {};
+      response.data.lignes.forEach(l => {
+        if (l.is_remise_negative) {
+          autoExcluded[l.idx] = true;
+        }
+      });
+      setExcluded(autoExcluded);
+      
+    } catch (err) {
+      toast.error("Erreur: " + (err.response?.data?.detail || err.message));
+      setPreview(null);
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
   const processFiles = (newFiles) => {
@@ -1301,7 +1349,6 @@ const ImportModule = ({ restaurants, onRefresh }) => {
       let detectedRestaurant = null;
       let detectedDate = null;
 
-      // Détection du restaurant
       for (const resto of restaurants) {
         if (name.includes(resto.code.toLowerCase()) || name.includes(resto.nom.toLowerCase())) {
           detectedRestaurant = resto;
@@ -1309,7 +1356,6 @@ const ImportModule = ({ restaurants, onRefresh }) => {
         }
       }
 
-      // Détection de la date (YYYYMMDD)
       const dateMatch = name.match(/(\d{4})(\d{2})(\d{2})/);
       if (dateMatch) {
         detectedDate = `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`;
@@ -1328,6 +1374,76 @@ const ImportModule = ({ restaurants, onRefresh }) => {
     });
 
     setFiles([...files, ...processed]);
+  };
+
+  const toggleExclude = (idx) => {
+    setExcluded(prev => ({ ...prev, [idx]: !prev[idx] }));
+  };
+
+  const toggleExcludeAll = (exclude) => {
+    if (!preview) return;
+    const newExcluded = {};
+    preview.lignes.forEach(l => {
+      newExcluded[l.idx] = exclude;
+    });
+    setExcluded(newExcluded);
+  };
+
+  const setAnnotation = (idx, note) => {
+    setAnnotations(prev => ({ ...prev, [idx]: note }));
+  };
+
+  const confirmImport = async () => {
+    if (!preview) return;
+    
+    const restaurant_id = preview.detected_restaurant_id;
+    if (!restaurant_id) {
+      toast.error("Sélectionnez un restaurant");
+      return;
+    }
+    
+    setImporting(true);
+    
+    try {
+      // Préparer les lignes avec exclusions et annotations
+      const lignes = preview.lignes.map(l => ({
+        ...l,
+        exclu: excluded[l.idx] || false,
+        annotation: annotations[l.idx] || ""
+      }));
+      
+      const response = await axios.post(`${API}/imports/confirm`, {
+        restaurant_id,
+        date_vente: preview.detected_date,
+        filename: preview.filename,
+        lignes
+      });
+      
+      toast.success(response.data.message + ` (${response.data.nb_exclues} exclues)`);
+      
+      // Reset
+      setPreview(null);
+      setPreviewFile(null);
+      setExcluded({});
+      setAnnotations({});
+      onRefresh();
+      
+      // Recharger historique
+      const res = await axios.get(`${API}/imports`);
+      setImports(res.data);
+      
+    } catch (err) {
+      toast.error("Erreur: " + (err.response?.data?.detail || err.message));
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const cancelPreview = () => {
+    setPreview(null);
+    setPreviewFile(null);
+    setExcluded({});
+    setAnnotations({});
   };
 
   const updateFile = (idx, updates) => {
@@ -1353,7 +1469,6 @@ const ImportModule = ({ restaurants, onRefresh }) => {
       }
 
       try {
-        // Créer FormData pour l'upload
         const formData = new FormData();
         formData.append('file', f.file);
         formData.append('restaurant_id', f.restaurant.id);
@@ -1363,12 +1478,8 @@ const ImportModule = ({ restaurants, onRefresh }) => {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
 
-        updateFile(i, { 
-          status: "success", 
-          result: response.data 
-        });
-        
-        toast.success(`${response.data.nb_lignes} ventes importées - CA: ${fmtPrice(response.data.ca_total)}`);
+        updateFile(i, { status: "success", result: response.data });
+        toast.success(`${response.data.nb_lignes} ventes importées`);
         
       } catch (err) {
         const errorMsg = err.response?.data?.detail || err.message;
@@ -1380,7 +1491,6 @@ const ImportModule = ({ restaurants, onRefresh }) => {
     setImporting(false);
     onRefresh();
     
-    // Recharger l'historique
     try {
       const res = await axios.get(`${API}/imports`);
       setImports(res.data);
@@ -1399,11 +1509,182 @@ const ImportModule = ({ restaurants, onRefresh }) => {
     }
   };
 
+  const getRestaurantById = (id) => restaurants.find(r => r.id === id);
+  
+  // Calculs preview
+  const activeLignes = preview ? preview.lignes.filter(l => !excluded[l.idx]) : [];
+  const activeCA = activeLignes.reduce((sum, l) => sum + l.ca_ttc, 0);
+  const activeQty = activeLignes.reduce((sum, l) => sum + l.quantite, 0);
+  const excludedCount = preview ? Object.values(excluded).filter(Boolean).length : 0;
+
   const pendingCount = files.filter(f => f.status === "pending").length;
   const successCount = files.filter(f => f.status === "success").length;
   const errorCount = files.filter(f => f.status === "error").length;
 
-  const getRestaurantById = (id) => restaurants.find(r => r.id === id);
+  // Mode prévisualisation
+  if (preview) {
+    return (
+      <div className="space-y-6" data-testid="import-preview">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Contrôle de l'import</h1>
+            <p className="text-muted-foreground">{preview.filename}</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={cancelPreview}>
+              Annuler
+            </Button>
+            <Button onClick={confirmImport} disabled={importing || activeLignes.length === 0} data-testid="confirm-import-btn">
+              {importing ? "Import..." : `Valider l'import (${activeLignes.length} lignes)`}
+            </Button>
+          </div>
+        </div>
+
+        {/* KPIs */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <KPICard label="Lignes totales" value={preview.nb_lignes} icon={FileSpreadsheet} />
+          <KPICard label="Lignes actives" value={activeLignes.length} color="text-emerald-400" />
+          <KPICard label="Exclues" value={excludedCount} color="text-amber-400" />
+          <KPICard label="CA Total" value={fmtK(activeCA)} suffix="F" icon={TrendingUp} />
+          <KPICard label="Nourriture" value={preview.nb_food} color="text-orange-400" />
+          <KPICard label="Boissons" value={preview.nb_drink} color="text-cyan-400" />
+        </div>
+
+        {/* Alertes */}
+        {preview.nb_remises_negatives > 0 && (
+          <div className="trinity-card bg-amber-500/10 border-amber-500/50 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0" />
+            <div>
+              <span className="font-medium text-amber-400">{preview.nb_remises_negatives} remise(s) négative(s) détectée(s)</span>
+              <span className="text-sm text-muted-foreground ml-2">(bug PSW - auto-exclues)</span>
+            </div>
+          </div>
+        )}
+
+        {/* Restaurant et Date */}
+        <div className="flex gap-4">
+          <Select
+            label="Restaurant"
+            value={preview.detected_restaurant_id || ""}
+            onChange={(v) => setPreview({...preview, detected_restaurant_id: v, restaurant: restaurants.find(r => r.id === v)})}
+            options={restaurants.map(r => ({ value: r.id, label: r.nom }))}
+            placeholder="Sélectionner *"
+            className="w-64"
+          />
+          <Input
+            label="Date de vente"
+            type="date"
+            value={preview.detected_date || ""}
+            onChange={(v) => setPreview({...preview, detected_date: v})}
+            className="w-48"
+          />
+          <div className="flex items-end gap-2">
+            <Button variant="ghost" onClick={() => toggleExcludeAll(false)} className="text-xs">
+              Tout inclure
+            </Button>
+            <Button variant="ghost" onClick={() => toggleExcludeAll(true)} className="text-xs">
+              Tout exclure
+            </Button>
+          </div>
+        </div>
+
+        {/* Tableau des lignes */}
+        <div className="trinity-card overflow-hidden p-0 max-h-[500px] overflow-y-auto">
+          <table className="trinity-table">
+            <thead className="sticky top-0 bg-card z-10">
+              <tr>
+                <th className="w-12">
+                  <input 
+                    type="checkbox" 
+                    checked={excludedCount === 0}
+                    onChange={(e) => toggleExcludeAll(!e.target.checked)}
+                    className="rounded"
+                  />
+                </th>
+                <th>Produit</th>
+                <th>Type</th>
+                <th className="text-right">Qté</th>
+                <th className="text-right">PU</th>
+                <th className="text-right">CA TTC</th>
+                <th className="text-right">Remise</th>
+                <th className="w-20">Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              {preview.lignes.map((ligne) => {
+                const isExcluded = excluded[ligne.idx];
+                const isRemiseNeg = ligne.is_remise_negative;
+                return (
+                  <tr 
+                    key={ligne.idx} 
+                    className={`${isExcluded ? 'opacity-40 line-through' : ''} ${isRemiseNeg ? 'bg-amber-500/10' : ''}`}
+                  >
+                    <td>
+                      <input 
+                        type="checkbox" 
+                        checked={!isExcluded}
+                        onChange={() => toggleExclude(ligne.idx)}
+                        className="rounded"
+                      />
+                    </td>
+                    <td className="font-medium">{ligne.produit_nom}</td>
+                    <td>
+                      <Pill type={ligne.is_food ? "food" : "drink"}>
+                        {ligne.is_food ? "N" : "B"}
+                      </Pill>
+                    </td>
+                    <td className="text-right font-mono">{ligne.quantite}</td>
+                    <td className="text-right font-mono">{fmtPrice(ligne.prix_unitaire)}</td>
+                    <td className="text-right font-mono">{fmtPrice(ligne.ca_ttc)}</td>
+                    <td className={`text-right font-mono ${isRemiseNeg ? 'text-amber-400' : ''}`}>
+                      {ligne.remise !== 0 ? fmtPrice(ligne.remise) : '—'}
+                    </td>
+                    <td>
+                      {editingNote === ligne.idx ? (
+                        <input
+                          type="text"
+                          value={annotations[ligne.idx] || ""}
+                          onChange={(e) => setAnnotation(ligne.idx, e.target.value)}
+                          onBlur={() => setEditingNote(null)}
+                          onKeyDown={(e) => e.key === 'Enter' && setEditingNote(null)}
+                          className="trinity-input text-xs w-full"
+                          autoFocus
+                        />
+                      ) : (
+                        <button 
+                          onClick={() => setEditingNote(ligne.idx)}
+                          className={`p-1 rounded hover:bg-accent ${annotations[ligne.idx] ? 'text-cyan-400' : 'text-muted-foreground'}`}
+                          title={annotations[ligne.idx] || "Ajouter une note"}
+                        >
+                          {annotations[ligne.idx] ? '📝' : '✏️'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Résumé */}
+        <div className="trinity-card bg-secondary/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-lg font-medium">Résumé de l'import</span>
+              <p className="text-sm text-muted-foreground mt-1">
+                {activeLignes.length} lignes seront importées ({excludedCount} exclues)
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-mono font-bold">{fmtPrice(activeCA)}</div>
+              <div className="text-sm text-muted-foreground">{activeQty} articles</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6" data-testid="import-module">
@@ -1422,7 +1703,6 @@ const ImportModule = ({ restaurants, onRefresh }) => {
       </div>
 
       {showHistory ? (
-        /* Historique des imports */
         <div className="space-y-4">
           {imports.length > 0 ? (
             imports.map((imp) => {
@@ -1444,7 +1724,9 @@ const ImportModule = ({ restaurants, onRefresh }) => {
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <div className="font-mono text-lg">{imp.nb_lignes}</div>
-                      <div className="text-xs text-muted-foreground">lignes</div>
+                      <div className="text-xs text-muted-foreground">
+                        lignes {imp.nb_exclues ? `(${imp.nb_exclues} exclues)` : ''}
+                      </div>
                     </div>
                     <Pill type={imp.statut === "importé" ? "success" : "warning"}>
                       {imp.statut}
@@ -1468,31 +1750,39 @@ const ImportModule = ({ restaurants, onRefresh }) => {
           )}
         </div>
       ) : (
-        /* Zone d'import */
         <>
+          {/* Zone de drop */}
           <div
-            className={`drop-zone ${dragOver ? 'dragover' : ''}`}
+            className={`drop-zone ${dragOver ? 'dragover' : ''} ${previewLoading ? 'animate-pulse' : ''}`}
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
-            onClick={() => document.getElementById('file-input').click()}
+            onClick={() => !previewLoading && document.getElementById('file-input').click()}
             data-testid="drop-zone"
           >
-            <UploadCloud className="w-12 h-12 text-muted-foreground mb-4" />
-            <p className="text-lg font-medium mb-2">Glissez vos fichiers ici</p>
-            <p className="text-sm text-muted-foreground">ou cliquez pour sélectionner</p>
-            <p className="text-xs text-muted-foreground mt-2">Format: .xls ou .xlsx (export PSW)</p>
+            {previewLoading ? (
+              <>
+                <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+                <p className="text-lg font-medium">Analyse du fichier...</p>
+              </>
+            ) : (
+              <>
+                <UploadCloud className="w-12 h-12 text-muted-foreground mb-4" />
+                <p className="text-lg font-medium mb-2">Glissez votre fichier ici</p>
+                <p className="text-sm text-muted-foreground">pour prévisualiser et contrôler avant import</p>
+                <p className="text-xs text-muted-foreground mt-2">Format: .xls ou .xlsx (export PSW)</p>
+              </>
+            )}
             <input
               id="file-input"
               type="file"
               accept=".xls,.xlsx"
-              multiple
               onChange={handleDrop}
               className="hidden"
             />
           </div>
 
-          {/* Liste des fichiers */}
+          {/* File queue (si plusieurs fichiers) */}
           {files.length > 0 && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -1503,7 +1793,7 @@ const ImportModule = ({ restaurants, onRefresh }) => {
                 </div>
                 {pendingCount > 0 && (
                   <Button onClick={uploadFiles} disabled={importing} data-testid="import-btn">
-                    {importing ? "Import en cours..." : `Importer ${pendingCount} fichier${pendingCount > 1 ? 's' : ''}`}
+                    {importing ? "Import..." : `Importer ${pendingCount} fichier(s)`}
                   </Button>
                 )}
               </div>
@@ -1515,19 +1805,13 @@ const ImportModule = ({ restaurants, onRefresh }) => {
                     className={`trinity-card flex items-center gap-4 ${f.status === 'error' ? 'border-red-500/50' : f.status === 'success' ? 'border-emerald-500/50' : ''}`}
                   >
                     <FileSpreadsheet className="w-8 h-8 text-muted-foreground flex-shrink-0" />
-                    
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">{f.name}</div>
                       <div className="text-sm text-muted-foreground">
                         {(f.size / 1024).toFixed(1)} KB
-                        {f.result && (
-                          <span className="ml-2 text-emerald-400">
-                            • {f.result.nb_lignes} ventes • {fmtPrice(f.result.ca_total)}
-                          </span>
-                        )}
+                        {f.result && <span className="ml-2 text-emerald-400">• {f.result.nb_lignes} ventes • {fmtPrice(f.result.ca_total)}</span>}
                       </div>
                     </div>
-
                     <Select
                       value={f.restaurant?.id || ""}
                       onChange={(v) => updateFile(idx, { restaurant: restaurants.find(r => r.id === v) })}
@@ -1535,64 +1819,38 @@ const ImportModule = ({ restaurants, onRefresh }) => {
                       placeholder="Restaurant *"
                       className="w-44"
                     />
-
                     <Input
                       type="date"
                       value={f.date || ""}
                       onChange={(v) => updateFile(idx, { date: v })}
                       className="w-40"
                     />
-
-                    <div className="flex items-center gap-2 min-w-[100px]">
-                      {f.status === "pending" && (
-                        <span className="text-xs text-muted-foreground">En attente</span>
-                      )}
-                      {f.status === "processing" && (
-                        <span className="text-xs text-amber-400 animate-pulse">Import...</span>
-                      )}
-                      {f.status === "success" && (
-                        <Check className="w-5 h-5 text-emerald-400" />
-                      )}
-                      {f.status === "error" && (
-                        <div className="flex items-center gap-1 text-red-400">
-                          <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                          <span className="text-xs truncate max-w-[80px]" title={f.error}>{f.error}</span>
-                        </div>
-                      )}
+                    <div className="flex items-center gap-2 min-w-[80px]">
+                      {f.status === "pending" && <span className="text-xs text-muted-foreground">En attente</span>}
+                      {f.status === "processing" && <span className="text-xs text-amber-400 animate-pulse">Import...</span>}
+                      {f.status === "success" && <Check className="w-5 h-5 text-emerald-400" />}
+                      {f.status === "error" && <AlertCircle className="w-5 h-5 text-red-400" title={f.error} />}
                     </div>
-
-                    <button 
-                      onClick={() => removeFile(idx)}
-                      className="p-1 hover:bg-destructive/20 rounded text-destructive"
-                    >
+                    <button onClick={() => removeFile(idx)} className="p-1 hover:bg-destructive/20 rounded text-destructive">
                       <X className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
               </div>
-
-              {files.length > 0 && (
-                <Button 
-                  variant="ghost" 
-                  onClick={() => setFiles([])}
-                  className="text-muted-foreground"
-                >
-                  Effacer tout
-                </Button>
-              )}
+              <Button variant="ghost" onClick={() => setFiles([])} className="text-muted-foreground">
+                Effacer tout
+              </Button>
             </div>
           )}
 
-          {/* Aide format fichier */}
+          {/* Aide */}
           <div className="trinity-card bg-secondary/30">
-            <h4 className="font-medium mb-2">Format de fichier attendu</h4>
-            <p className="text-sm text-muted-foreground mb-2">
-              Exportez vos ventes depuis PSW au format .xls ou .xlsx. Le système détecte automatiquement les colonnes :
-            </p>
-            <div className="text-xs text-muted-foreground space-y-1">
-              <p>• <strong>Colonnes reconnues :</strong> Désignation, Quantité, PU TTC, CA TTC, Remise, Famille</p>
-              <p>• <strong>Nommage recommandé :</strong> <code className="bg-background px-1 rounded">NOM_RESTAURANT_ventes_du_YYYYMMDD.xls</code></p>
-              <p>• <strong>Remises négatives :</strong> Automatiquement exclues (bug PSW connu)</p>
+            <h4 className="font-medium mb-2">Fonctionnalités de contrôle</h4>
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>• <strong>Prévisualisation :</strong> Visualisez toutes les lignes avant import</p>
+              <p>• <strong>Exclusion :</strong> Décochez les lignes à ne pas importer</p>
+              <p>• <strong>Annotations :</strong> Ajoutez des notes sur chaque ligne</p>
+              <p>• <strong>Remises négatives :</strong> Détectées et auto-exclues (bug PSW)</p>
             </div>
           </div>
         </>
