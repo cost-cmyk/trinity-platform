@@ -1080,8 +1080,8 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                               <tr key={idx} className="border-t border-border/50">
                                 <td className="py-2">{ing.nom}</td>
                                 <td className="text-right font-mono">{ing.quantite} {ing.unite}</td>
-                                <td className="text-right font-mono">{fmt(ing.prix_unitaire, 3)} €</td>
-                                <td className="text-right font-mono">{fmt(ing.cout_ligne, 2)} €</td>
+                                <td className="text-right font-mono">{fmtPrice(ing.prix_unitaire)}</td>
+                                <td className="text-right font-mono">{fmtPrice(ing.cout_ligne)}</td>
                               </tr>
                             ))}
                           </tbody>
