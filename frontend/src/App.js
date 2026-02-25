@@ -29,6 +29,10 @@ const RESTO_COLORS = [
 
 // ====================== UTILITIES ======================
 
+// Devise : Franc Pacifique (XPF) - pas de décimales
+const CURRENCY = "XPF";
+const CURRENCY_SYMBOL = " F";
+
 const fmt = (n, decimals = 0) => {
   if (n === null || n === undefined) return "—";
   return new Intl.NumberFormat('fr-FR', { 
@@ -37,11 +41,20 @@ const fmt = (n, decimals = 0) => {
   }).format(n);
 };
 
+const fmtPrice = (n) => {
+  // Format prix en XPF (sans décimales)
+  if (n === null || n === undefined) return "—";
+  return new Intl.NumberFormat('fr-FR', { 
+    minimumFractionDigits: 0, 
+    maximumFractionDigits: 0 
+  }).format(Math.round(n)) + CURRENCY_SYMBOL;
+};
+
 const fmtK = (n) => {
   if (n === null || n === undefined) return "—";
   if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
-  return fmt(n);
+  if (n >= 1000) return `${(n / 1000).toFixed(0)}K`;
+  return fmt(n, 0);
 };
 
 const fmtPct = (n) => `${fmt(n, 1)}%`;
