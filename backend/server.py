@@ -472,6 +472,11 @@ def parse_xls_file(file_content: bytes, filename: str) -> List[dict]:
                 if ca_ttc < 0:
                     continue
                 
+                # Remise négative = bug PSW, on la met à 0 mais on garde la ligne
+                remise_negative = remise < 0
+                if remise_negative:
+                    remise = 0
+                
                 # Déterminer si c'est nourriture ou boisson
                 # D'abord vérifier la colonne "Fournisseur" si elle existe
                 is_food = True
