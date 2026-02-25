@@ -609,16 +609,15 @@ def parse_xlsx_file(file_content: bytes, filename: str) -> List[dict]:
                 ca_ht = get_val('ca_ht', 0)
                 remise = get_val('remise', 0)
                 
-                # Si pas de CA TTC mais CA HT, utiliser CA HT
+                # Si CA TTC est à 0 mais CA HT existe, utiliser CA HT
                 if ca_ttc == 0 and ca_ht > 0:
                     ca_ttc = ca_ht
                 
-                # Si pas de CA TTC, calculer depuis quantité x prix unitaire
-                if ca_ttc == 0 and quantite > 0 and prix_unitaire > 0:
-                    ca_ttc = quantite * prix_unitaire
-                
-                if quantite == 0 and ca_ttc == 0:
+                # NE PAS calculer le CA depuis Qté × PU si CA TTC et CA HT sont tous les deux à 0
+                # Ignorer les lignes sans CA (CA TTC = 0)
+                if ca_ttc == 0:
                     continue
+                
                 if ca_ttc < 0:
                     continue
                 
