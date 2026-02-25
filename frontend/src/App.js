@@ -52,9 +52,11 @@ const fmtPrice = (n) => {
 
 const fmtK = (n) => {
   if (n === null || n === undefined) return "—";
-  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(0)}K`;
-  return fmt(n, 0);
+  // Afficher tous les chiffres sans abréviation
+  return new Intl.NumberFormat('fr-FR', { 
+    minimumFractionDigits: 0, 
+    maximumFractionDigits: 0 
+  }).format(Math.round(n));
 };
 
 const fmtPct = (n) => `${fmt(n, 1)}%`;
