@@ -1210,7 +1210,7 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                 type="number"
                 value={newIngredient.prix_unitaire}
                 onChange={(e) => setNewIngredient({ ...newIngredient, prix_unitaire: e.target.value })}
-                placeholder="PU €"
+                placeholder="PU XPF"
                 className="trinity-input col-span-2"
                 step="0.001"
               />
