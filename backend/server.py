@@ -507,7 +507,8 @@ def parse_xls_file(file_content: bytes, filename: str) -> List[dict]:
                     'prix_unitaire': prix_unitaire,
                     'ca_ttc': ca_ttc,
                     'remise': remise,
-                    'is_food': is_food
+                    'is_food': is_food,
+                    'remise_negative_corrigee': remise_negative
                 })
                 
             except Exception as e:
