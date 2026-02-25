@@ -343,6 +343,377 @@ async def create_import(data: dict):
     await db.imports.insert_one(doc)
     return import_record
 
+# ====================== FILE UPLOAD & PARSING ======================
+
+def detect_restaurant_from_filename(filename: str, restaurants: list) -> Optional[dict]:
+    """Détecte le restaurant à partir du nom de fichier"""
+    filename_lower = filename.lower()
+    for resto in restaurants:
+        if resto["code"].lower() in filename_lower or resto["nom"].lower() in filename_lower:
+            return resto
+    return None
+
+def detect_date_from_filename(filename: str) -> Optional[str]:
+    """Détecte la date à partir du nom de fichier (format YYYYMMDD)"""
+    # Pattern: ventes_du_YYYYMMDD ou _YYYYMMDD_
+    match = re.search(r'(\d{4})(\d{2})(\d{2})', filename)
+    if match:
+        year, month, day = match.groups()
+        return f"{year}-{month}-{day}"
+    return None
+
+def parse_xls_file(file_content: bytes, filename: str) -> List[dict]:
+    """Parse un fichier .xls (Excel 97-2003) et extrait les ventes"""
+    ventes = []
+    
+    try:
+        workbook = xlrd.open_workbook(file_contents=file_content)
+        sheet = workbook.sheet_by_index(0)
+        
+        # Trouver les colonnes (chercher dans les premières lignes)
+        header_row = -1
+        col_mapping = {}
+        
+        # Colonnes attendues PSW
+        expected_cols = {
+            'designation': ['désignation', 'designation', 'produit', 'article', 'libellé', 'libelle', 'nom'],
+            'quantite': ['qté', 'qte', 'quantité', 'quantite', 'qty', 'nb'],
+            'prix_unitaire': ['pu', 'p.u.', 'pu ttc', 'prix unitaire', 'prix unit', 'pu ht'],
+            'ca_ttc': ['ca ttc', 'ca', 'montant', 'total', 'ca ht', 'chiffre'],
+            'remise': ['remise', 'rem', 'réduction', 'reduction', 'rabais'],
+            'famille': ['famille', 'catégorie', 'categorie', 'type', 'groupe']
+        }
+        
+        # Chercher l'en-tête dans les 10 premières lignes
+        for row_idx in range(min(10, sheet.nrows)):
+            row_values = [str(cell).lower().strip() for cell in sheet.row_values(row_idx)]
+            
+            # Vérifier si cette ligne contient des en-têtes
+            found_cols = 0
+            temp_mapping = {}
+            
+            for col_idx, cell_value in enumerate(row_values):
+                for key, aliases in expected_cols.items():
+                    if any(alias in cell_value for alias in aliases):
+                        temp_mapping[key] = col_idx
+                        found_cols += 1
+                        break
+            
+            # Si on a trouvé au moins désignation et quantité, c'est l'en-tête
+            if 'designation' in temp_mapping and ('quantite' in temp_mapping or 'ca_ttc' in temp_mapping):
+                header_row = row_idx
+                col_mapping = temp_mapping
+                break
+        
+        if header_row == -1:
+            # Pas d'en-tête trouvé, essayer format par défaut PSW
+            # Format PSW typique: Touche | Désignation | Famille | Qté | PU TTC | Remise | CA TTC
+            col_mapping = {'designation': 1, 'famille': 2, 'quantite': 3, 'prix_unitaire': 4, 'remise': 5, 'ca_ttc': 6}
+            header_row = 0
+        
+        # Parser les données
+        for row_idx in range(header_row + 1, sheet.nrows):
+            try:
+                row = sheet.row_values(row_idx)
+                
+                # Ignorer les lignes vides ou totaux
+                designation_col = col_mapping.get('designation', 1)
+                if designation_col >= len(row):
+                    continue
+                    
+                designation = str(row[designation_col]).strip()
+                if not designation or designation.lower() in ['total', 'sous-total', 'sous total', '']:
+                    continue
+                
+                # Extraire les valeurs
+                def get_float(col_key, default=0):
+                    col_idx = col_mapping.get(col_key)
+                    if col_idx is not None and col_idx < len(row):
+                        val = row[col_idx]
+                        if isinstance(val, (int, float)):
+                            return float(val)
+                        try:
+                            # Nettoyer la chaîne (enlever €, espaces, remplacer , par .)
+                            val_str = str(val).replace('€', '').replace(' ', '').replace(',', '.').strip()
+                            return float(val_str) if val_str else default
+                        except:
+                            pass
+                    return default
+                
+                quantite = get_float('quantite', 0)
+                prix_unitaire = get_float('prix_unitaire', 0)
+                ca_ttc = get_float('ca_ttc', 0)
+                remise = get_float('remise', 0)
+                
+                # Ignorer les lignes sans quantité et sans CA
+                if quantite == 0 and ca_ttc == 0:
+                    continue
+                
+                # Ignorer les remises négatives (bug PSW)
+                if ca_ttc < 0:
+                    continue
+                
+                # Déterminer si c'est nourriture ou boisson
+                famille = ""
+                if 'famille' in col_mapping and col_mapping['famille'] < len(row):
+                    famille = str(row[col_mapping['famille']]).lower()
+                
+                is_food = True
+                boisson_keywords = ['boisson', 'drink', 'bière', 'biere', 'vin', 'alcool', 'café', 'cafe', 'thé', 'the', 'soda', 'jus', 'eau', 'cocktail', 'apéritif', 'aperitif', 'digestif']
+                if any(kw in famille or kw in designation.lower() for kw in boisson_keywords):
+                    is_food = False
+                
+                ventes.append({
+                    'produit_nom': designation,
+                    'quantite': int(quantite) if quantite else 1,
+                    'prix_unitaire': prix_unitaire,
+                    'ca_ttc': ca_ttc if ca_ttc else (quantite * prix_unitaire),
+                    'remise': remise,
+                    'is_food': is_food
+                })
+                
+            except Exception as e:
+                logging.warning(f"Erreur ligne {row_idx}: {e}")
+                continue
+                
+    except Exception as e:
+        logging.error(f"Erreur parsing XLS: {e}")
+        raise HTTPException(status_code=400, detail=f"Erreur de lecture du fichier XLS: {str(e)}")
+    
+    return ventes
+
+def parse_xlsx_file(file_content: bytes, filename: str) -> List[dict]:
+    """Parse un fichier .xlsx (Excel 2007+) et extrait les ventes"""
+    ventes = []
+    
+    try:
+        workbook = openpyxl.load_workbook(io.BytesIO(file_content), data_only=True)
+        sheet = workbook.active
+        
+        # Convertir en liste de listes pour réutiliser la logique
+        rows = list(sheet.iter_rows(values_only=True))
+        
+        if not rows:
+            return ventes
+        
+        # Même logique que XLS pour trouver l'en-tête
+        expected_cols = {
+            'designation': ['désignation', 'designation', 'produit', 'article', 'libellé', 'libelle', 'nom'],
+            'quantite': ['qté', 'qte', 'quantité', 'quantite', 'qty', 'nb'],
+            'prix_unitaire': ['pu', 'p.u.', 'pu ttc', 'prix unitaire', 'prix unit'],
+            'ca_ttc': ['ca ttc', 'ca', 'montant', 'total'],
+            'remise': ['remise', 'rem', 'réduction', 'reduction'],
+            'famille': ['famille', 'catégorie', 'categorie', 'type']
+        }
+        
+        header_row = -1
+        col_mapping = {}
+        
+        for row_idx, row in enumerate(rows[:10]):
+            row_values = [str(cell).lower().strip() if cell else '' for cell in row]
+            
+            temp_mapping = {}
+            for col_idx, cell_value in enumerate(row_values):
+                for key, aliases in expected_cols.items():
+                    if any(alias in cell_value for alias in aliases):
+                        temp_mapping[key] = col_idx
+                        break
+            
+            if 'designation' in temp_mapping and ('quantite' in temp_mapping or 'ca_ttc' in temp_mapping):
+                header_row = row_idx
+                col_mapping = temp_mapping
+                break
+        
+        if header_row == -1:
+            col_mapping = {'designation': 1, 'famille': 2, 'quantite': 3, 'prix_unitaire': 4, 'remise': 5, 'ca_ttc': 6}
+            header_row = 0
+        
+        for row_idx, row in enumerate(rows[header_row + 1:], start=header_row + 1):
+            try:
+                if not row:
+                    continue
+                
+                designation_col = col_mapping.get('designation', 1)
+                if designation_col >= len(row) or not row[designation_col]:
+                    continue
+                
+                designation = str(row[designation_col]).strip()
+                if not designation or designation.lower() in ['total', 'sous-total', '']:
+                    continue
+                
+                def get_val(col_key, default=0):
+                    col_idx = col_mapping.get(col_key)
+                    if col_idx is not None and col_idx < len(row) and row[col_idx] is not None:
+                        val = row[col_idx]
+                        if isinstance(val, (int, float)):
+                            return float(val)
+                        try:
+                            val_str = str(val).replace('€', '').replace(' ', '').replace(',', '.').strip()
+                            return float(val_str) if val_str else default
+                        except:
+                            pass
+                    return default
+                
+                quantite = get_val('quantite', 0)
+                prix_unitaire = get_val('prix_unitaire', 0)
+                ca_ttc = get_val('ca_ttc', 0)
+                remise = get_val('remise', 0)
+                
+                if quantite == 0 and ca_ttc == 0:
+                    continue
+                if ca_ttc < 0:
+                    continue
+                
+                famille = ""
+                if 'famille' in col_mapping and col_mapping['famille'] < len(row) and row[col_mapping['famille']]:
+                    famille = str(row[col_mapping['famille']]).lower()
+                
+                is_food = True
+                boisson_keywords = ['boisson', 'drink', 'bière', 'vin', 'alcool', 'café', 'thé', 'soda', 'jus', 'eau', 'cocktail']
+                if any(kw in famille or kw in designation.lower() for kw in boisson_keywords):
+                    is_food = False
+                
+                ventes.append({
+                    'produit_nom': designation,
+                    'quantite': int(quantite) if quantite else 1,
+                    'prix_unitaire': prix_unitaire,
+                    'ca_ttc': ca_ttc if ca_ttc else (quantite * prix_unitaire),
+                    'remise': remise,
+                    'is_food': is_food
+                })
+                
+            except Exception as e:
+                logging.warning(f"Erreur ligne {row_idx}: {e}")
+                continue
+                
+    except Exception as e:
+        logging.error(f"Erreur parsing XLSX: {e}")
+        raise HTTPException(status_code=400, detail=f"Erreur de lecture du fichier XLSX: {str(e)}")
+    
+    return ventes
+
+@api_router.post("/imports/upload")
+async def upload_and_import_file(
+    file: UploadFile = File(...),
+    restaurant_id: str = Form(None),
+    date_vente: str = Form(None)
+):
+    """Upload et parse un fichier de ventes (XLS ou XLSX)"""
+    
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Nom de fichier manquant")
+    
+    filename = file.filename.lower()
+    if not filename.endswith(('.xls', '.xlsx')):
+        raise HTTPException(status_code=400, detail="Format non supporté. Utilisez .xls ou .xlsx")
+    
+    # Lire le contenu du fichier
+    content = await file.read()
+    
+    # Récupérer les restaurants pour la détection
+    restaurants = await db.restaurants.find({}, {"_id": 0}).to_list(100)
+    
+    # Détecter le restaurant si non fourni
+    if not restaurant_id:
+        detected_resto = detect_restaurant_from_filename(file.filename, restaurants)
+        if detected_resto:
+            restaurant_id = detected_resto["id"]
+        else:
+            raise HTTPException(status_code=400, detail="Restaurant non détecté. Veuillez le sélectionner manuellement.")
+    
+    # Vérifier que le restaurant existe
+    restaurant = await db.restaurants.find_one({"id": restaurant_id})
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant non trouvé")
+    
+    # Détecter la date si non fournie
+    if not date_vente:
+        date_vente = detect_date_from_filename(file.filename)
+        if not date_vente:
+            date_vente = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    # Parser le fichier selon le format
+    if filename.endswith('.xls'):
+        ventes_data = parse_xls_file(content, file.filename)
+    else:
+        ventes_data = parse_xlsx_file(content, file.filename)
+    
+    if not ventes_data:
+        raise HTTPException(status_code=400, detail="Aucune donnée de vente trouvée dans le fichier")
+    
+    # Créer l'enregistrement d'import
+    import_id = str(uuid.uuid4())
+    import_record = {
+        "id": import_id,
+        "type": "ventes",
+        "restaurant_id": restaurant_id,
+        "nom_fichier": file.filename,
+        "date_import": datetime.now(timezone.utc).isoformat(),
+        "statut": "importé",
+        "nb_lignes": len(ventes_data),
+        "erreurs": []
+    }
+    await db.imports.insert_one(import_record)
+    
+    # Créer les ventes
+    ventes_docs = []
+    for v in ventes_data:
+        vente = {
+            "id": str(uuid.uuid4()),
+            "restaurant_id": restaurant_id,
+            "date_vente": date_vente,
+            "produit_nom": v["produit_nom"],
+            "produit_carte_id": None,
+            "quantite": v["quantite"],
+            "prix_unitaire": v["prix_unitaire"],
+            "ca_ttc": v["ca_ttc"],
+            "remise": v["remise"],
+            "is_food": v["is_food"],
+            "import_id": import_id,
+            "exclu": False,
+            "annotation": "",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        ventes_docs.append(vente)
+    
+    if ventes_docs:
+        await db.ventes.insert_many(ventes_docs)
+    
+    # Calculer les stats
+    ca_total = sum(v["ca_ttc"] for v in ventes_docs)
+    
+    return {
+        "success": True,
+        "import_id": import_id,
+        "restaurant": restaurant["nom"],
+        "date_vente": date_vente,
+        "nb_lignes": len(ventes_docs),
+        "ca_total": round(ca_total, 2),
+        "message": f"{len(ventes_docs)} ventes importées pour {restaurant['nom']} du {date_vente}"
+    }
+
+@api_router.get("/imports/{import_id}/ventes")
+async def get_import_ventes(import_id: str):
+    """Récupérer les ventes d'un import spécifique"""
+    ventes = await db.ventes.find({"import_id": import_id}, {"_id": 0}).to_list(10000)
+    return ventes
+
+@api_router.delete("/imports/{import_id}")
+async def delete_import(import_id: str):
+    """Supprimer un import et ses ventes associées"""
+    # Supprimer les ventes
+    ventes_result = await db.ventes.delete_many({"import_id": import_id})
+    # Supprimer l'import
+    import_result = await db.imports.delete_one({"id": import_id})
+    
+    if import_result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Import non trouvé")
+    
+    return {
+        "message": "Import supprimé",
+        "ventes_supprimees": ventes_result.deleted_count
+    }
+
 # ====================== DASHBOARD / STATS ======================
 
 @api_router.get("/dashboard/stats")
