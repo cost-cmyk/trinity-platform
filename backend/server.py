@@ -542,6 +542,12 @@ def parse_achats_xlsx(file_content: bytes, filename: str) -> List[dict]:
             if not current_produit:
                 current_produit = produit if produit and produit != "nan" else "Produit inconnu"
             
+            # Si le produit est vide ou "nan", utiliser current_produit
+            if not produit or produit == "nan" or produit == "None":
+                produit_final = current_produit
+            else:
+                produit_final = produit
+            
             try:
                 prix_unitaire = float(row[col_mapping.get('prix_unitaire', 3)]) if col_mapping.get('prix_unitaire') is not None and row[col_mapping.get('prix_unitaire')] else 0
                 quantite = float(row[col_mapping.get('quantite', 4)]) if col_mapping.get('quantite') is not None and row[col_mapping.get('quantite')] else 0
