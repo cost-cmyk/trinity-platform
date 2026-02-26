@@ -2978,16 +2978,31 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                   <div className="text-xs text-muted-foreground">Coût Total</div>
                   <div className="font-mono text-lg">{fmtPrice(costs.coutTotal)}</div>
                 </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Coût/Portion</div>
-                  <div className="font-mono text-lg">{fmtPrice(costs.coutPortion)}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Food Cost</div>
-                  <div className={`font-mono text-lg ${getFoodCostColor(costs.foodCost)}`}>
-                    {fmtPct(costs.foodCost)}
-                  </div>
-                </div>
+                {form.type_fiche === "produit_fini" ? (
+                  <>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Coût/Portion</div>
+                      <div className="font-mono text-lg">{fmtPrice(costs.coutPortion)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Food Cost</div>
+                      <div className={`font-mono text-lg ${getFoodCostColor(costs.foodCost)}`}>
+                        {fmtPct(costs.foodCost)}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Coût /KG</div>
+                      <div className="font-mono text-lg">{costs.coutParKg > 0 ? fmtPrice(costs.coutParKg) : "—"}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Coût /L</div>
+                      <div className="font-mono text-lg">{costs.coutParKg > 0 ? fmtPrice(costs.coutParKg) : "—"}</div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
