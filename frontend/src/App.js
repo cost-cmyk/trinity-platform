@@ -2232,6 +2232,7 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
     const foodCost = prixVente > 0 ? (coutPortion / prixVente) * 100 : 0;
     
     // Calculer le poids total (uniquement pour les ingrédients avec unité de poids)
+    // Exclure "unité" et "pièce" car ce ne sont pas des unités de poids
     const poidsTotal = form.ingredients.reduce((sum, ing) => {
       if (['g', 'kg', 'ml', 'L', 'cl'].includes(ing.unite)) {
         return sum + convertToBaseUnit(ing.quantite, ing.unite);
@@ -2239,7 +2240,10 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
       return sum;
     }, 0);
     
-    return { coutTotal, coutPortion, foodCost, poidsTotal };
+    // Pour les préparations de base, calculer le coût au kg ou au L
+    const coutParKg = poidsTotal > 0 ? (coutTotal / poidsTotal) * 1000 : 0;
+    
+    return { coutTotal, coutPortion, foodCost, poidsTotal, coutParKg };
   };
 
   const handleSubmit = async () => {
