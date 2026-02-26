@@ -2094,19 +2094,61 @@ const ImportModule = ({ restaurants, onRefresh }) => {
 
   return (
     <div className="space-y-6" data-testid="import-module">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Import des Ventes</h1>
-          <p className="text-muted-foreground">Importez vos fichiers de ventes PSW (.xls, .xlsx)</p>
+      {/* Header avec tabs */}
+      <div>
+        <h1 className="text-3xl font-bold mb-4">Import de Données</h1>
+        
+        {/* Tabs */}
+        <div className="flex items-center gap-2 border-b border-border mb-6">
+          <button
+            onClick={() => setActiveTab("ventes")}
+            className={`px-4 py-2 font-medium transition-colors border-b-2 ${
+              activeTab === "ventes"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <UploadCloud className="w-4 h-4 inline mr-2" />
+            Ventes PSW
+          </button>
+          <button
+            onClick={() => setActiveTab("carte")}
+            className={`px-4 py-2 font-medium transition-colors border-b-2 ${
+              activeTab === "carte"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <UtensilsCrossed className="w-4 h-4 inline mr-2" />
+            Carte & Produits
+          </button>
+          <button
+            onClick={() => setActiveTab("achats")}
+            className={`px-4 py-2 font-medium transition-colors border-b-2 ${
+              activeTab === "achats"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Package className="w-4 h-4 inline mr-2" />
+            Achats Odoo
+          </button>
         </div>
-        <Button 
-          variant="secondary" 
-          onClick={() => setShowHistory(!showHistory)}
-          data-testid="toggle-history-btn"
-        >
-          {showHistory ? "Nouvel import" : `Historique (${imports.length})`}
-        </Button>
       </div>
+      
+      {/* Contenu des tabs */}
+      {activeTab === "ventes" && (
+        <>
+          <div className="flex items-center justify-between">
+            <p className="text-muted-foreground">Importez vos fichiers de ventes PSW (.xls, .xlsx)</p>
+            <Button 
+              variant="secondary" 
+              onClick={() => setShowHistory(!showHistory)}
+              data-testid="toggle-history-btn"
+            >
+              {showHistory ? "Nouvel import" : `Historique (${imports.length})`}
+            </Button>
+          </div>
 
       {showHistory ? (
         <div className="space-y-4">
