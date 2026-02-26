@@ -2245,16 +2245,30 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
       toast.error("Nom et restaurant requis");
       return;
     }
+    
+    // Validation : rattachement carte obligatoire pour "produit_fini"
+    if (form.type_fiche === "produit_fini" && form.linked_produit_ids.length === 0) {
+      toast.error("Rattachement à au moins un produit de la carte obligatoire");
+      return;
+    }
+    
     try {
+      const costs = calculateCosts();
       const data = {
         ...form,
         nb_portions: parseInt(form.nb_portions) || 1,
         prix_vente: parseFloat(form.prix_vente) || 0,
+        poids_total_g: costs.poidsTotal,
         ingredients: form.ingredients.map(ing => ({
           nom: ing.nom,
           quantite: parseFloat(ing.quantite),
           unite: ing.unite,
-          prix_unitaire: parseFloat(ing.prix_unitaire)
+          prix_unitaire: parseFloat(ing.prix_unitaire) || 0,
+          cout_ligne: ing.cout_ligne,
+          type_ingredient: ing.type_ingredient,
+          fiche_id: ing.fiche_id || null,
+          fournisseur: ing.fournisseur || null,
+          date_achat: ing.date_achat || null
         }))
       };
       if (editingId) {
