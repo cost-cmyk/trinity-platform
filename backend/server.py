@@ -1765,6 +1765,19 @@ async def get_cout_theorique(restaurant_id: str, date: Optional[str] = None):
         "couverture_pct": round(len(ventes_avec_cout) / len(ventes) * 100, 1) if ventes else 0
     }
 
+
+# ====================== ACHATS ======================
+
+@api_router.get("/achats")
+async def get_achats(restaurant_id: Optional[str] = None):
+    """Récupère tous les achats, optionnellement filtrés par restaurant"""
+    query = {}
+    if restaurant_id:
+        query["restaurant_id"] = restaurant_id
+    
+    achats = await db.achats.find(query, {"_id": 0}).to_list(10000)
+    return achats
+
 @api_router.get("/categories")
 async def get_categories():
     """Liste des catégories disponibles"""
