@@ -1199,7 +1199,7 @@ async def preview_carte_import(file: UploadFile = File(...)):
             "nb_restaurants": len(data["restaurants"]),
             "nb_produits": len(data["produits"]),
             "restaurants": data["restaurants"],
-            "produits": data["produits"][:100]  # Limiter pour la prévisualisation
+            "produits": data["produits"]  # Tous les produits
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
