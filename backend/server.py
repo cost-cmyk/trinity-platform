@@ -611,9 +611,9 @@ def parse_xlsx_file(file_content: bytes, filename: str) -> List[dict]:
                 if ca_ttc == 0 and ca_ht > 0:
                     ca_ttc = ca_ht
                 
-                # NE PAS calculer le CA depuis Qté × PU si CA TTC et CA HT sont tous les deux à 0
-                # Ignorer les lignes sans CA (CA TTC = 0)
-                if ca_ttc == 0:
+                # Conserver les lignes avec CA TTC > 0 OU avec une remise > 0 (offres)
+                # Ignorer uniquement les lignes complètement vides
+                if ca_ttc == 0 and quantite == 0 and remise == 0:
                     continue
                 
                 if ca_ttc < 0:
