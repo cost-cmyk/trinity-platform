@@ -17,10 +17,38 @@ import openpyxl
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# MongoDB connection with retry logic
+mongo_url = os.environ.get('MONGO_URL')
+db_name = os.environ.get('DB_NAME')
+
+if not mongo_url or not db_name:
+    logger.error("MONGO_URL or DB_NAME not found in environment variables")
+    raise ValueError("Missing MongoDB configuration")
+
+logger.info(f"Connecting to MongoDB: {mongo_url[:20]}...")
+logger.info(f"Using database: {db_name}")
+
+try:
+    client = AsyncIOMotorClient(
+        mongo_url,
+        serverSelectionTimeoutMS=10000,  # 10 seconds timeout
+        connectTimeoutMS=10000,
+        socketTimeoutMS=10000,
+        maxPoolSize=10,
+        minPoolSize=1
+    )
+    db = client[db_name]
+    logger.info("MongoDB client initialized successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize MongoDB client: {e}")
+    raise
 
 app = FastAPI(title="Trinity API", version="1.0.0")
 api_router = APIRouter(prefix="/api")
