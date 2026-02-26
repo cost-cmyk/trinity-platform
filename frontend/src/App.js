@@ -1929,6 +1929,8 @@ const ProduitsAchatsModule = ({ restaurants }) => {
           </div>
         </div>
       )}
+        </>
+      )}
     </div>
   );
 };
