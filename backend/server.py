@@ -1174,6 +1174,210 @@ async def delete_import(import_id: str):
         "ventes_supprimees": ventes_result.deleted_count
     }
 
+
+# ====================== IMPORT CARTES ======================
+
+@api_router.post("/imports/carte/preview")
+async def preview_carte_import(file: UploadFile = File(...)):
+    """Preview d'un fichier de carte avant import"""
+    
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Nom de fichier manquant")
+    
+    filename = file.filename.lower()
+    if not filename.endswith('.xlsx'):
+        raise HTTPException(status_code=400, detail="Format non supporté. Utilisez .xlsx")
+    
+    content = await file.read()
+    
+    try:
+        data = parse_carte_xlsx(content, file.filename)
+        
+        return {
+            "success": True,
+            "filename": file.filename,
+            "nb_restaurants": len(data["restaurants"]),
+            "nb_produits": len(data["produits"]),
+            "restaurants": data["restaurants"],
+            "produits": data["produits"][:100]  # Limiter pour la prévisualisation
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@api_router.post("/imports/carte/confirm")
+async def confirm_carte_import(data: dict):
+    """Confirme l'import de carte après prévisualisation"""
+    
+    restaurants_data = data.get("restaurants", [])
+    produits_data = data.get("produits", [])
+    
+    if not restaurants_data or not produits_data:
+        raise HTTPException(status_code=400, detail="Données manquantes")
+    
+    # Créer ou récupérer les restaurants
+    restaurant_mapping = {}  # nom -> id
+    
+    for resto_data in restaurants_data:
+        # Vérifier si le restaurant existe déjà
+        existing = await db.restaurants.find_one({"nom": resto_data["nom"]})
+        
+        if existing:
+            restaurant_mapping[resto_data["nom"]] = existing["id"]
+        else:
+            # Créer le restaurant
+            resto_doc = {
+                "id": str(uuid.uuid4()),
+                "nom": resto_data["nom"],
+                "code": resto_data["code"],
+                "type": resto_data["type"],
+                "couleur": resto_data["couleur"],
+                "jours_fermeture": resto_data["jours_fermeture"],
+                "actif": resto_data["actif"],
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.restaurants.insert_one(resto_doc)
+            restaurant_mapping[resto_data["nom"]] = resto_doc["id"]
+    
+    # Créer les produits
+    produits_crees = 0
+    for produit_data in produits_data:
+        restaurant_id = restaurant_mapping.get(produit_data["restaurant_nom"])
+        
+        if not restaurant_id:
+            continue
+        
+        # Vérifier si le produit existe déjà (même nom + même restaurant)
+        existing_produit = await db.produits.find_one({
+            "nom": produit_data["nom"],
+            "restaurant_id": restaurant_id
+        })
+        
+        if existing_produit:
+            # Mettre à jour le produit existant
+            await db.produits.update_one(
+                {"id": existing_produit["id"]},
+                {"$set": {
+                    "categorie": produit_data["categorie"],
+                    "prix_vente": produit_data["prix_vente"],
+                    "is_food": produit_data["is_food"],
+                    "description": produit_data["description"],
+                    "actif": produit_data["actif"]
+                }}
+            )
+        else:
+            # Créer le produit
+            produit_doc = {
+                "id": str(uuid.uuid4()),
+                "nom": produit_data["nom"],
+                "restaurant_id": restaurant_id,
+                "categorie": produit_data["categorie"],
+                "prix_vente": produit_data["prix_vente"],
+                "is_food": produit_data["is_food"],
+                "description": produit_data["description"],
+                "touches_psw": "",
+                "fiche_technique_id": None,
+                "actif": produit_data["actif"],
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.produits.insert_one(produit_doc)
+            produits_crees += 1
+    
+    return {
+        "success": True,
+        "restaurants_crees": len([r for r in restaurants_data if r["nom"] not in restaurant_mapping]),
+        "produits_crees": produits_crees,
+        "message": f"{produits_crees} produits importés pour {len(restaurant_mapping)} restaurants"
+    }
+
+# ====================== IMPORT ACHATS ======================
+
+@api_router.post("/imports/achats/preview")
+async def preview_achats_import(file: UploadFile = File(...)):
+    """Preview d'un fichier d'achats Odoo avant import"""
+    
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Nom de fichier manquant")
+    
+    filename = file.filename.lower()
+    if not filename.endswith('.xlsx'):
+        raise HTTPException(status_code=400, detail="Format non supporté. Utilisez .xlsx")
+    
+    content = await file.read()
+    
+    try:
+        achats = parse_achats_xlsx(content, file.filename)
+        
+        return {
+            "success": True,
+            "filename": file.filename,
+            "nb_achats": len(achats),
+            "achats": achats[:100]  # Limiter pour la prévisualisation
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@api_router.post("/imports/achats/confirm")
+async def confirm_achats_import(data: dict):
+    """Confirme l'import d'achats après prévisualisation"""
+    
+    achats_data = data.get("achats", [])
+    restaurant_id = data.get("restaurant_id")
+    
+    if not achats_data:
+        raise HTTPException(status_code=400, detail="Aucune donnée d'achat")
+    
+    if not restaurant_id:
+        raise HTTPException(status_code=400, detail="Restaurant requis")
+    
+    # Vérifier que le restaurant existe
+    restaurant = await db.restaurants.find_one({"id": restaurant_id})
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant non trouvé")
+    
+    # Créer l'enregistrement d'import
+    import_id = str(uuid.uuid4())
+    import_record = {
+        "id": import_id,
+        "type": "achats",
+        "restaurant_id": restaurant_id,
+        "nom_fichier": data.get("filename", "achats.xlsx"),
+        "date_import": datetime.now(timezone.utc).isoformat(),
+        "statut": "importé",
+        "nb_lignes": len(achats_data),
+        "erreurs": []
+    }
+    await db.imports.insert_one(import_record)
+    
+    # Créer les achats dans la collection "achats"
+    achats_docs = []
+    for achat in achats_data:
+        achat_doc = {
+            "id": str(uuid.uuid4()),
+            "import_id": import_id,
+            "restaurant_id": restaurant_id,
+            "reference_commande": achat["reference_commande"],
+            "fournisseur": achat["fournisseur"],
+            "produit": achat["produit"],
+            "prix_unitaire": achat["prix_unitaire"],
+            "quantite": achat["quantite"],
+            "unite": achat["unite"],
+            "total": achat["total"],
+            "date_achat": achat["date_achat"],
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        achats_docs.append(achat_doc)
+    
+    if achats_docs:
+        await db.achats.insert_many(achats_docs)
+    
+    return {
+        "success": True,
+        "import_id": import_id,
+        "restaurant": restaurant["nom"],
+        "nb_achats": len(achats_docs),
+        "message": f"{len(achats_docs)} achats importés pour {restaurant['nom']}"
+    }
+
 # ====================== DASHBOARD / STATS ======================
 
 @api_router.get("/dashboard/stats")
