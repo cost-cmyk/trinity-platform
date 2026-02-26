@@ -2232,9 +2232,15 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
         toast.error("Prix unitaire requis pour un produit acheté");
         return;
       }
-      // Conversion et calcul du coût
-      const qteBase = convertToBaseUnit(parseFloat(newIngredient.quantite), newIngredient.unite);
-      cout_ligne = (qteBase / 1000) * parseFloat(newIngredient.prix_unitaire); // PU est par kg ou L
+      
+      // Calcul correct avec la quantité de base
+      const qteDemandee = parseFloat(newIngredient.quantite);
+      const prixUnitaire = parseFloat(newIngredient.prix_unitaire);
+      const qteBase = newIngredient.quantite_base_achat || 1;
+      
+      // Le prix est pour qteBase unités de l'unité sélectionnée
+      cout_ligne = (qteDemandee / qteBase) * prixUnitaire;
+      
     } else {
       // Pour une sous-fiche, le cout_ligne est calculé au prorata
       const fiche = fiches.find(f => f.id === newIngredient.fiche_id);
@@ -2259,7 +2265,9 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
       prix_unitaire: "", 
       type_ingredient: ingredientTab, 
       fournisseur: null, 
-      date_achat: null 
+      date_achat: null,
+      quantite_base_achat: 1,
+      unite_achat_originale: null
     });
     setAchatsSearch("");
     setFichesSearch("");
