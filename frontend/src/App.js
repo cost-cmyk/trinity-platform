@@ -2566,7 +2566,9 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
               {/* Coûts calculés - Affichage selon le type de fiche */}
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  {form.type_fiche === "produit_fini" ? "Food cost calculé" : "Coûts unitaires calculés"}
+                  {form.type_fiche === "produit_fini" 
+                    ? (form.is_food ? "Food cost calculé" : "Bev cost calculé")
+                    : "Coûts unitaires calculés"}
                 </label>
                 <div className="trinity-input bg-secondary/50 cursor-not-allowed text-sm">
                   <span className="text-muted-foreground">
