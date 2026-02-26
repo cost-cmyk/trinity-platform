@@ -1559,6 +1559,361 @@ const CarteModule = ({ restaurants, produits, onRefresh }) => {
 
 // ====================== FICHES TECHNIQUES ======================
 
+
+// ====================== PRODUITS ACHATS ======================
+
+const ProduitsAchatsModule = ({ restaurants }) => {
+  const [achats, setAchats] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedFournisseur, setSelectedFournisseur] = useState("all");
+  const [sortBy, setSortBy] = useState("name"); // name, price, hausse, fournisseur
+  const [expandedProduct, setExpandedProduct] = useState(null);
+
+  useEffect(() => {
+    loadAchats();
+  }, [selectedRestaurant]);
+
+  const loadAchats = async () => {
+    setLoading(true);
+    try {
+      const query = selectedRestaurant ? `?restaurant_id=${selectedRestaurant}` : '';
+      const response = await axios.get(`${API}/achats${query}`);
+      setAchats(response.data);
+    } catch (err) {
+      console.error('Erreur chargement achats:', err);
+      toast.error("Erreur de chargement des achats");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Grouper les achats par produit avec historique
+  const produitsGroupes = useMemo(() => {
+    const grouped = {};
+    
+    achats.forEach(achat => {
+      const key = achat.produit;
+      if (!grouped[key]) {
+        grouped[key] = {
+          produit: achat.produit,
+          fournisseur: achat.fournisseur,
+          categorie: achat.categorie || "Autres",
+          historique: [],
+          dernierPrix: 0,
+          prixMoyen: 0,
+          evolution: 0,
+          nbCommandes: 0,
+          multiF: false
+        };
+      }
+      
+      grouped[key].historique.push({
+        date: achat.date_achat,
+        prix: achat.prix_unitaire,
+        quantite: achat.quantite,
+        total: achat.total,
+        fournisseur: achat.fournisseur
+      });
+    });
+
+    // Calculer les stats pour chaque produit
+    Object.values(grouped).forEach(p => {
+      p.historique.sort((a, b) => new Date(b.date) - new Date(a.date));
+      p.dernierPrix = p.historique[0]?.prix || 0;
+      p.prixMoyen = p.historique.reduce((sum, h) => sum + h.prix, 0) / p.historique.length;
+      p.nbCommandes = p.historique.length;
+      
+      // Calculer l'évolution (dernier vs avant-dernier)
+      if (p.historique.length >= 2) {
+        const dernier = p.historique[0].prix;
+        const avantDernier = p.historique[1].prix;
+        p.evolution = ((dernier - avantDernier) / avantDernier * 100);
+      }
+      
+      // Vérifier multi-fournisseur
+      const fournisseurs = [...new Set(p.historique.map(h => h.fournisseur))];
+      p.multiF = fournisseurs.length > 1;
+    });
+
+    return Object.values(grouped);
+  }, [achats]);
+
+  // Filtres
+  const produitsFiltres = useMemo(() => {
+    let filtered = produitsGroupes;
+
+    // Filtre par recherche
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(p => 
+        p.produit.toLowerCase().includes(query) ||
+        p.fournisseur.toLowerCase().includes(query) ||
+        p.categorie.toLowerCase().includes(query)
+      );
+    }
+
+    // Filtre par fournisseur
+    if (selectedFournisseur !== "all") {
+      filtered = filtered.filter(p => p.fournisseur === selectedFournisseur);
+    }
+
+    // Tri
+    filtered = [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case "price":
+          return b.dernierPrix - a.dernierPrix;
+        case "hausse":
+          return b.evolution - a.evolution;
+        case "fournisseur":
+          return a.fournisseur.localeCompare(b.fournisseur);
+        default:
+          return a.produit.localeCompare(b.produit);
+      }
+    });
+
+    return filtered;
+  }, [produitsGroupes, searchQuery, selectedFournisseur, sortBy]);
+
+  // KPIs
+  const stats = useMemo(() => {
+    const fournisseurs = [...new Set(achats.map(a => a.fournisseur))];
+    const categories = [...new Set(produitsGroupes.map(p => p.categorie))];
+    const avecHausse = produitsGroupes.filter(p => p.evolution > 0).length;
+    const multiF = produitsGroupes.filter(p => p.multiF).length;
+
+    return {
+      nbProduits: produitsGroupes.length,
+      nbFournisseurs: fournisseurs.length,
+      nbCategories: categories.length,
+      avecHausse,
+      multiF,
+      fournisseurs
+    };
+  }, [achats, produitsGroupes]);
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-3xl font-bold mb-1">Produits achats</h1>
+        <p className="text-xs text-muted-foreground">
+          Listing produits · Fournisseurs · Historique prix
+        </p>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="trinity-card" style={{ borderLeft: '3px solid #3b82f6' }}>
+          <div className="text-xs text-muted-foreground uppercase mb-1">Produits</div>
+          <div className="text-3xl font-bold" style={{ color: '#3b82f6' }}>{stats.nbProduits}</div>
+          <div className="text-xs text-muted-foreground mt-1">Au 30</div>
+        </div>
+
+        <div className="trinity-card" style={{ borderLeft: '3px solid #f97316' }}>
+          <div className="text-xs text-muted-foreground uppercase mb-1">Fournisseurs</div>
+          <div className="text-3xl font-bold" style={{ color: '#f97316' }}>{stats.nbFournisseurs}</div>
+        </div>
+
+        <div className="trinity-card" style={{ borderLeft: '3px solid #3b82f6' }}>
+          <div className="text-xs text-muted-foreground uppercase mb-1">Catégories</div>
+          <div className="text-3xl font-bold" style={{ color: '#3b82f6' }}>{stats.nbCategories}</div>
+        </div>
+
+        <div className="trinity-card" style={{ borderLeft: '3px solid #f87171' }}>
+          <div className="text-xs text-muted-foreground uppercase mb-1">Avec Hausse</div>
+          <div className="text-3xl font-bold" style={{ color: '#f87171' }}>{stats.avecHausse}</div>
+          <div className="text-xs text-muted-foreground mt-1">&gt;0%</div>
+        </div>
+
+        <div className="trinity-card" style={{ borderLeft: '3px solid #f97316' }}>
+          <div className="text-xs text-muted-foreground uppercase mb-1">Multi-Fourn.</div>
+          <div className="text-3xl font-bold" style={{ color: '#f97316' }}>{stats.multiF}</div>
+        </div>
+      </div>
+
+      {/* Filtres Restaurant */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setSelectedRestaurant(null)}
+          className={`px-3 py-1.5 text-xs rounded-full transition ${
+            !selectedRestaurant 
+              ? 'bg-primary text-primary-foreground' 
+              : 'bg-secondary text-secondary-foreground hover:bg-accent'
+          }`}
+        >
+          Tous restaurants
+        </button>
+        {restaurants.filter(r => r.actif).slice(0, 8).map(r => (
+          <button
+            key={r.id}
+            onClick={() => setSelectedRestaurant(r.id)}
+            className={`px-3 py-1.5 text-xs rounded-full transition ${
+              selectedRestaurant === r.id
+                ? 'text-white'
+                : 'bg-secondary text-secondary-foreground hover:bg-accent'
+            }`}
+            style={selectedRestaurant === r.id ? { backgroundColor: r.couleur } : {}}
+          >
+            {r.nom}
+          </button>
+        ))}
+      </div>
+
+      {/* Barre de recherche et filtres */}
+      <div className="trinity-card">
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="flex-1">
+            <input
+              type="text"
+              placeholder="🔍 Rechercher produit, fournisseur, catégorie..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full trinity-input"
+            />
+          </div>
+          
+          <select
+            value={selectedFournisseur}
+            onChange={(e) => setSelectedFournisseur(e.target.value)}
+            className="trinity-input md:w-48"
+          >
+            <option value="all">Tous fournisseurs</option>
+            {stats.fournisseurs.map(f => (
+              <option key={f} value={f}>{f}</option>
+            ))}
+          </select>
+
+          <div className="flex gap-2">
+            {['A-Z', 'Prix +', 'Hausse +', 'Fourn.'].map((label, idx) => {
+              const values = ['name', 'price', 'hausse', 'fournisseur'];
+              return (
+                <button
+                  key={label}
+                  onClick={() => setSortBy(values[idx])}
+                  className={`px-3 py-1.5 text-xs rounded transition ${
+                    sortBy === values[idx]
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary hover:bg-accent'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Tableau des produits */}
+      {loading ? (
+        <div className="text-center py-8 text-muted-foreground">Chargement...</div>
+      ) : produitsFiltres.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground">
+          Aucun produit trouvé. Importez des achats pour commencer.
+        </div>
+      ) : (
+        <div className="trinity-card">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-3 px-2 text-xs font-bold uppercase text-muted-foreground">Produit</th>
+                  <th className="text-left py-3 px-2 text-xs font-bold uppercase text-muted-foreground">Fournisseur</th>
+                  <th className="text-right py-3 px-2 text-xs font-bold uppercase text-muted-foreground">Dernier Prix</th>
+                  <th className="text-center py-3 px-2 text-xs font-bold uppercase text-muted-foreground">Test ?</th>
+                  <th className="text-right py-3 px-2 text-xs font-bold uppercase text-muted-foreground">Evolution</th>
+                  <th className="text-center py-3 px-2 text-xs font-bold uppercase text-muted-foreground">Cmdes</th>
+                  <th className="text-left py-3 px-2 text-xs font-bold uppercase text-muted-foreground">Catégorie</th>
+                </tr>
+              </thead>
+              <tbody>
+                {produitsFiltres.map((p, idx) => (
+                  <React.Fragment key={idx}>
+                    <tr 
+                      className="border-b border-border/50 hover:bg-accent/30 cursor-pointer transition"
+                      onClick={() => setExpandedProduct(expandedProduct === idx ? null : idx)}
+                    >
+                      <td className="py-3 px-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{p.produit}</span>
+                          {p.evolution > 5 && (
+                            <span className="px-1.5 py-0.5 bg-red-500/20 text-red-400 text-[10px] rounded">
+                              Hausse
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-2">
+                        <span className="text-sm" style={{ color: '#2dd4bf' }}>{p.fournisseur}</span>
+                      </td>
+                      <td className="py-3 px-2 text-right">
+                        <span className="text-sm font-mono font-bold" style={{ color: '#fbbf24' }}>
+                          {fmtPrice(p.dernierPrix)} F
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        <span className="text-xs text-muted-foreground">
+                          {p.prixMoyen.toFixed(0)} F
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 text-right">
+                        {p.evolution !== 0 && (
+                          <span 
+                            className="text-sm font-mono font-bold"
+                            style={{ color: p.evolution > 0 ? '#f87171' : '#34d399' }}
+                          >
+                            {p.evolution > 0 ? '+' : ''}{p.evolution.toFixed(1)}%
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        <span className="text-sm">{p.nbCommandes}</span>
+                      </td>
+                      <td className="py-3 px-2">
+                        <span className="text-xs text-muted-foreground">{p.categorie}</span>
+                      </td>
+                    </tr>
+                    
+                    {/* Historique expandable */}
+                    {expandedProduct === idx && (
+                      <tr>
+                        <td colSpan="7" className="p-4 bg-secondary/30">
+                          <div className="space-y-2">
+                            <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                              📊 Historique des commandes — {p.produit}
+                            </div>
+                            
+                            <div className="grid grid-cols-4 gap-2 text-xs mb-3">
+                              {p.historique.slice(0, 8).map((h, hidx) => (
+                                <div key={hidx} className="flex justify-between py-1 px-2 bg-background/50 rounded">
+                                  <span className="text-muted-foreground">{h.date}</span>
+                                  <span className="font-mono">{fmtPrice(h.prix)} F</span>
+                                  <span className="text-muted-foreground">{h.quantite} {h.unite || 'unité'}</span>
+                                </div>
+                              ))}
+                            </div>
+                            
+                            <div className="flex gap-4 text-xs">
+                              <span>Total commandes: <strong>{p.nbCommandes}</strong></span>
+                              <span>Montant total: <strong>{fmtPrice(p.historique.reduce((s, h) => s + h.total, 0))} F</strong></span>
+                              <span>PU moyen: <strong>{fmtPrice(p.prixMoyen)} F</strong></span>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
