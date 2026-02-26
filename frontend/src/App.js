@@ -1730,15 +1730,15 @@ const ImportModule = ({ restaurants, onRefresh }) => {
   const uploadFiles = async () => {
     setImporting(true);
 
-    for (let i = 0; i < files.length; i++) {
-      const f = files[i];
-      if (f.status !== "pending") continue;
+    // Préparer tous les uploads en batch (parallèle)
+    const uploadPromises = files.map(async (f, i) => {
+      if (f.status !== "pending") return;
       
       updateFile(i, { status: "processing" });
       
       if (!f.restaurant) {
         updateFile(i, { status: "error", error: "Sélectionnez un restaurant" });
-        continue;
+        return;
       }
 
       try {
@@ -1759,7 +1759,10 @@ const ImportModule = ({ restaurants, onRefresh }) => {
         updateFile(i, { status: "error", error: errorMsg });
         toast.error(`Erreur: ${errorMsg}`);
       }
-    }
+    });
+
+    // Attendre que tous les uploads soient terminés
+    await Promise.all(uploadPromises);
 
     setImporting(false);
     onRefresh();
