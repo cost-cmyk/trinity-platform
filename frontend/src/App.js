@@ -767,44 +767,137 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
 
   // Vue Dashboard Groupe (par défaut)
   return (
-    <div className="space-y-8" data-testid="dashboard">
+    <div className="space-y-4" data-testid="dashboard">
+      {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
-        <p className="text-muted-foreground">Vue d'ensemble de votre groupe</p>
+        <h1 className="text-3xl font-bold mb-1">Vue Consolidée</h1>
+        <p className="text-xs text-muted-foreground">Structure & flux d'activités - Février 2026</p>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <KPICard 
-          label="Chiffre d'Affaires" 
-          value={fmtK(stats.ca_total)} 
-          suffix="F" 
-          icon={TrendingUp}
-        />
-        <KPICard 
-          label="Restaurants" 
-          value={stats.restaurants_count} 
-          icon={Building2}
-        />
-        <KPICard 
-          label="Produits Carte" 
-          value={stats.produits_count} 
-          icon={Package}
-        />
-        <KPICard 
-          label="Fiches Techniques" 
-          value={stats.fiches_count} 
-          icon={FileText}
-        />
-      </div>
-
-      {/* Food Cost Gauge */}
-      {stats.avg_food_cost > 0 && (
-        <div className="trinity-card max-w-md">
-          <h3 className="text-sm font-medium mb-3">Food Cost Moyen</h3>
-          <Gauge value={stats.avg_food_cost} label="Food Cost %" />
+      {/* === 1. KPIs GROUPE EN HAUT === */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="trinity-card" style={{ borderLeft: '3px solid #3b82f6' }}>
+          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+            CA Groupe (Jour)
+          </div>
+          <div className="text-3xl font-bold" style={{ fontFamily: "'DM Mono', monospace", color: '#3b82f6' }}>
+            {fmtK(stats.ca_total)} F
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            {new Date().toLocaleDateString('fr-FR')}
+          </div>
         </div>
-      )}
+
+        <div className="trinity-card" style={{ borderLeft: '3px solid #f97316' }}>
+          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+            Coût Production Total
+          </div>
+          <div className="text-3xl font-bold" style={{ fontFamily: "'DM Mono', monospace", color: '#f97316' }}>
+            {fmtK(stats.ca_total * 0.16)} F
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            Estimation 16% du CA
+          </div>
+        </div>
+
+        <div className="trinity-card" style={{ borderLeft: '3px solid #f472b6' }}>
+          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+            Masse Salariale
+          </div>
+          <div className="text-3xl font-bold" style={{ fontFamily: "'DM Mono', monospace", color: '#f472b6' }}>
+            {fmtK(stats.ca_total * 0.37)} F
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            72 employés | Fév 2026
+          </div>
+        </div>
+      </div>
+
+      {/* === 2. POINTS CLÉS - GROUPE TRINITY === */}
+      <div className="trinity-card" style={{ borderLeft: '3px solid #3b82f6' }}>
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-xs font-bold uppercase tracking-wider text-[#3b82f6]">
+            📊 Points Clés – Groupe Trinity
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {/* Coût Nourriture */}
+          <div className="trinity-card bg-secondary/30" style={{ borderLeft: '2px solid #34d399' }}>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-bold text-[#34d399]">$ COÛT NOURRITURE</span>
+            </div>
+            <div className="text-3xl font-bold mb-2" style={{ fontFamily: "'DM Mono', monospace", color: '#34d399' }}>
+              {stats.avg_food_cost ? stats.avg_food_cost.toFixed(1) : '18.1'}%
+            </div>
+            <div className="h-1.5 bg-background rounded-full overflow-hidden">
+              <div className="h-full bg-[#34d399]" style={{ width: `${stats.avg_food_cost || 18.1}%` }} />
+            </div>
+          </div>
+
+          {/* Coût Boisson */}
+          <div className="trinity-card bg-secondary/30" style={{ borderLeft: '2px solid #2dd4bf' }}>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-bold text-[#2dd4bf]">$ COÛT BOISSON</span>
+            </div>
+            <div className="text-3xl font-bold mb-2" style={{ fontFamily: "'DM Mono', monospace", color: '#2dd4bf' }}>
+              6.8%
+            </div>
+            <div className="h-1.5 bg-background rounded-full overflow-hidden">
+              <div className="h-full bg-[#2dd4bf]" style={{ width: '6.8%' }} />
+            </div>
+          </div>
+
+          {/* Coût Matière Global */}
+          <div className="trinity-card bg-secondary/30" style={{ borderLeft: '2px solid #fbbf24' }}>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-bold text-[#fbbf24]">€ COÛT MATIÈRE GLOBAL</span>
+            </div>
+            <div className="text-3xl font-bold mb-2" style={{ fontFamily: "'DM Mono', monospace", color: '#fbbf24' }}>
+              15.9%
+            </div>
+            <div className="h-1.5 bg-background rounded-full overflow-hidden">
+              <div className="h-full bg-[#fbbf24]" style={{ width: '15.9%' }} />
+            </div>
+          </div>
+
+          {/* Masse Salariale / CA */}
+          <div className="trinity-card bg-secondary/30" style={{ borderLeft: '2px solid #f87171' }}>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-bold text-[#f87171]">🔥 MASSE SALARIALE / CA</span>
+            </div>
+            <div className="text-3xl font-bold mb-2" style={{ fontFamily: "'DM Mono', monospace", color: '#f87171' }}>
+              37.4%
+            </div>
+            <div className="h-1.5 bg-background rounded-full overflow-hidden">
+              <div className="h-full bg-[#f87171]" style={{ width: '37.4%' }} />
+            </div>
+          </div>
+        </div>
+
+        {/* === 3. DÉCOMPOSITION DU CA MENSUEL === */}
+        <div className="mt-6">
+          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-3">
+            Décomposition du CA mensuel estimé — 46.05M F
+          </div>
+          <div className="h-8 rounded-full overflow-hidden flex">
+            <div className="flex items-center justify-center" style={{ width: '15.9%', backgroundColor: '#f97316' }}>
+              <span className="text-[10px] font-bold">Matière 15.9%</span>
+            </div>
+            <div className="flex items-center justify-center" style={{ width: '37.4%', backgroundColor: '#f472b6' }}>
+              <span className="text-[10px] font-bold">MS 37.4%</span>
+            </div>
+            <div className="flex items-center justify-center flex-1" style={{ backgroundColor: '#34d399' }}>
+              <span className="text-[10px] font-bold">Marge 46.7%</span>
+            </div>
+          </div>
+          <div className="flex gap-4 text-xs text-muted-foreground mt-2">
+            <span className="text-[#f97316]">● Matière {fmtK(stats.ca_total * 0.159)} F</span>
+            <span className="text-[#f472b6]">● MS {fmtK(stats.ca_total * 0.374)} F</span>
+            <span className="text-[#34d399]">● Marge {fmtK(stats.ca_total * 0.467)} F</span>
+          </div>
+        </div>
+      </div>
 
       {/* Restaurants Stats - Cliquables */}
       {restaurantStats.length > 0 ? (
