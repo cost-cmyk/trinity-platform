@@ -2769,8 +2769,14 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                     type="text"
                     value={achatsSearch}
                     onChange={(e) => {
-                      setAchatsSearch(e.target.value);
-                      searchAchats(e.target.value);
+                      const value = e.target.value;
+                      setAchatsSearch(value);
+                      // Appel direct sans debounce complexe
+                      if (value.length >= 2) {
+                        searchAchats(value);
+                      } else {
+                        setAchatsResults([]);
+                      }
                     }}
                     placeholder="Rechercher un produit..."
                     className="trinity-input"
