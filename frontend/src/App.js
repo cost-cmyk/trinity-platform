@@ -2448,7 +2448,7 @@ const ImportModule = ({ restaurants, onRefresh }) => {
               </div>
             )}
           </div>
-        </>
+        </div>
       )}
     </div>
   );
