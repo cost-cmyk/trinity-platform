@@ -1327,15 +1327,9 @@ const ImportModule = ({ restaurants, onRefresh }) => {
       });
       
       setPreview(response.data);
-      
-      // Auto-exclure les remises négatives
-      const autoExcluded = {};
-      response.data.lignes.forEach(l => {
-        if (l.is_remise_negative) {
-          autoExcluded[l.idx] = true;
-        }
-      });
-      setExcluded(autoExcluded);
+      // Ne PAS auto-exclure les lignes avec remises négatives
+      // La ligne est conservée, seule la remise est mise à 0
+      setExcluded({});
       
     } catch (err) {
       toast.error("Erreur: " + (err.response?.data?.detail || err.message));
