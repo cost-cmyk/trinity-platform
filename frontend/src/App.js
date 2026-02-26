@@ -2858,7 +2858,7 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                     </div>
                     
                     <div className="text-xs text-muted-foreground">
-                      PU: {fmtPrice(newIngredient.prix_unitaire)} F/{newIngredient.unite}
+                      PU: {fmtPrice(newIngredient.prix_unitaire)} F/{newIngredient.unite_achat_originale || newIngredient.unite}
                     </div>
                   </div>
                 )}
