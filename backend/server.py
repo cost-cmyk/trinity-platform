@@ -573,12 +573,13 @@ def parse_achats_xlsx(file_content: bytes, filename: str) -> List[dict]:
                 achats.append({
                     "reference_commande": reference,
                     "fournisseur": partenaire,
-                    "produit": current_produit,
+                    "produit": produit_final,
                     "prix_unitaire": prix_unitaire,
                     "quantite": quantite,
                     "unite": unite,
                     "total": total,
-                    "date_achat": date_achat
+                    "date_achat": date_achat,
+                    "categorie": "Autres"
                 })
                 
             except Exception as e:
