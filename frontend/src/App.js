@@ -1548,19 +1548,31 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
 // ====================== IMPORT VENTES ======================
 
 const ImportModule = ({ restaurants, onRefresh }) => {
+  const [activeTab, setActiveTab] = useState("ventes"); // ventes, carte, achats
   const [dragOver, setDragOver] = useState(false);
   const [files, setFiles] = useState([]);
   const [importing, setImporting] = useState(false);
   const [imports, setImports] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   
-  // État de prévisualisation
+  // État de prévisualisation VENTES
   const [preview, setPreview] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
   const [excluded, setExcluded] = useState({});
   const [annotations, setAnnotations] = useState({});
   const [editingNote, setEditingNote] = useState(null);
+  
+  // État CARTE
+  const [cartePreview, setCartePreview] = useState(null);
+  const [carteLoading, setCarteLoading] = useState(false);
+  const [carteFile, setCarteFile] = useState(null);
+  
+  // État ACHATS
+  const [achatsPreview, setAchatsPreview] = useState(null);
+  const [achatsLoading, setAchatsLoading] = useState(false);
+  const [achatsFile, setAchatsFile] = useState(null);
+  const [achatsRestaurant, setAchatsRestaurant] = useState(null);
 
   // Charger l'historique des imports
   useEffect(() => {
