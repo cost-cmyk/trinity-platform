@@ -2557,13 +2557,26 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                 disabled={!form.restaurant_id}
               />
               
-              {/* Food cost calculé (lecture seule) */}
+              {/* Coûts calculés - Affichage selon le type de fiche */}
               <div>
-                <label className="block text-sm font-medium mb-2">Food cost calculé</label>
-                <div className="trinity-input bg-secondary/50 cursor-not-allowed">
+                <label className="block text-sm font-medium mb-2">
+                  {form.type_fiche === "produit_fini" ? "Food cost calculé" : "Coûts unitaires calculés"}
+                </label>
+                <div className="trinity-input bg-secondary/50 cursor-not-allowed text-sm">
                   <span className="text-muted-foreground">
-                    {calculateCosts().coutPortion > 0 ? `${fmtPrice(calculateCosts().coutPortion)} • ` : ""}
-                    {calculateCosts().foodCost > 0 ? fmtPct(calculateCosts().foodCost) : "—"}
+                    {form.type_fiche === "produit_fini" ? (
+                      // Pour produit fini : afficher Food cost %
+                      <>
+                        {calculateCosts().coutPortion > 0 ? `${fmtPrice(calculateCosts().coutPortion)} • ` : ""}
+                        {calculateCosts().foodCost > 0 ? fmtPct(calculateCosts().foodCost) : "—"}
+                      </>
+                    ) : (
+                      // Pour préparation de base : afficher coût au kg ou L
+                      <>
+                        {calculateCosts().coutTotal > 0 ? `${fmtPrice(calculateCosts().coutTotal)} total • ` : ""}
+                        {calculateCosts().coutParKg > 0 ? `${fmtPrice(calculateCosts().coutParKg)} F/kg` : "Automatique selon ingrédients et grammage"}
+                      </>
+                    )}
                   </span>
                 </div>
               </div>
