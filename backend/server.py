@@ -1311,7 +1311,7 @@ async def preview_achats_import(file: UploadFile = File(...)):
             "success": True,
             "filename": file.filename,
             "nb_achats": len(achats),
-            "achats": achats[:100]  # Limiter pour la prévisualisation
+            "achats": achats  # Tous les achats
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
