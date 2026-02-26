@@ -793,6 +793,41 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
                     <p className="text-sm text-muted-foreground">Aucune vente</p>
                   )}
                 </div>
+
+                {/* Top 10 Boissons Mois */}
+                <div className="trinity-card">
+                  <div className="text-xs font-bold uppercase tracking-wider text-[#06b6d4] mb-3">
+                    🍷 Top 10 du Mois - Boissons
+                  </div>
+                  {restoDashboard.top_mois?.drink?.length > 0 ? (
+                    <div className="space-y-2">
+                      {restoDashboard.top_mois.drink.slice(0, 10).map((item, idx) => {
+                        const maxCa = Math.max(...restoDashboard.top_mois.drink.map(i => i.ca));
+                        const pct = (item.ca / maxCa * 100);
+                        
+                        return (
+                          <div key={idx}>
+                            <div className="flex justify-between items-center text-xs mb-1">
+                              <div className="flex items-center gap-2">
+                                <span className="w-5 text-muted-foreground font-mono">{idx + 1}</span>
+                                <span className="truncate">{item.nom}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground">{item.quantite}</span>
+                                <span className="font-mono font-bold text-[#06b6d4]">{fmtPrice(item.ca)}</span>
+                              </div>
+                            </div>
+                            <div className="h-1 bg-background rounded-full overflow-hidden">
+                              <div className="h-full bg-[#06b6d4]" style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Aucune vente de boissons</p>
+                  )}
+                </div>
               </div>
             </div>
           </>
