@@ -1989,6 +1989,109 @@ const ImportModule = ({ restaurants, onRefresh }) => {
     );
   }
 
+
+  // ========== HANDLERS IMPORT CARTE ==========
+  const handleCarteFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setCarteLoading(true);
+    setCarteFile(file);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await axios.post(`${API}/imports/carte/preview`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      setCartePreview(response.data);
+      toast.success(`${response.data.nb_produits} produits détectés`);
+    } catch (err) {
+      toast.error("Erreur: " + (err.response?.data?.detail || err.message));
+      setCartePreview(null);
+    } finally {
+      setCarteLoading(false);
+    }
+  };
+  
+  const confirmCarteImport = async () => {
+    if (!cartePreview) return;
+    
+    setImporting(true);
+    
+    try {
+      const response = await axios.post(`${API}/imports/carte/confirm`, {
+        restaurants: cartePreview.restaurants,
+        produits: cartePreview.produits,
+        filename: carteFile?.name || 'carte.xlsx'
+      });
+      
+      toast.success(response.data.message);
+      setCartePreview(null);
+      setCarteFile(null);
+      onRefresh();
+    } catch (err) {
+      toast.error("Erreur: " + (err.response?.data?.detail || err.message));
+    } finally {
+      setImporting(false);
+    }
+  };
+  
+  // ========== HANDLERS IMPORT ACHATS ==========
+  const handleAchatsFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setAchatsLoading(true);
+    setAchatsFile(file);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await axios.post(`${API}/imports/achats/preview`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      setAchatsPreview(response.data);
+      toast.success(`${response.data.nb_achats} lignes d'achats détectées`);
+    } catch (err) {
+      toast.error("Erreur: " + (err.response?.data?.detail || err.message));
+      setAchatsPreview(null);
+    } finally {
+      setAchatsLoading(false);
+    }
+  };
+  
+  const confirmAchatsImport = async () => {
+    if (!achatsPreview || !achatsRestaurant) {
+      toast.error("Sélectionnez un restaurant");
+      return;
+    }
+    
+    setImporting(true);
+    
+    try {
+      const response = await axios.post(`${API}/imports/achats/confirm`, {
+        achats: achatsPreview.achats,
+        restaurant_id: achatsRestaurant.id,
+        filename: achatsFile?.name || 'achats.xlsx'
+      });
+      
+      toast.success(response.data.message);
+      setAchatsPreview(null);
+      setAchatsFile(null);
+      setAchatsRestaurant(null);
+      onRefresh();
+    } catch (err) {
+      toast.error("Erreur: " + (err.response?.data?.detail || err.message));
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6" data-testid="import-module">
       <div className="flex items-center justify-between">
