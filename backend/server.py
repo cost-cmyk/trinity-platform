@@ -158,6 +158,10 @@ class IngredientFiche(BaseModel):
     unite: str  # g, kg, L, ml, unité
     prix_unitaire: float
     cout_ligne: float = 0
+    type_ingredient: str = "achat"  # "achat" ou "sous_fiche"
+    fiche_id: Optional[str] = None  # ID de la sous-fiche si type_ingredient="sous_fiche"
+    fournisseur: Optional[str] = None  # Fournisseur (si achat)
+    date_achat: Optional[str] = None  # Date du dernier achat
 
 class FicheTechniqueBase(BaseModel):
     nom: str
