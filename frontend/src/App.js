@@ -2062,6 +2062,38 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
     };
   };
 
+  // Fonction pour parser l'unité d'achat et extraire l'unité standard
+  const parseUniteAchat = (uniteAchat) => {
+    if (!uniteAchat) return { unite: "kg", quantiteBase: 1 };
+    
+    // Regex pour extraire nombre + unité (ex: "500g", "70CL", "1KG")
+    const match = uniteAchat.match(/(\d+\.?\d*)\s*([a-zA-Z]+)/);
+    
+    if (match) {
+      const quantiteBase = parseFloat(match[1]);
+      const unite = match[2].toLowerCase();
+      
+      // Normaliser les unités
+      const uniteNormalisee = {
+        'g': 'g', 'kg': 'kg',
+        'ml': 'ml', 'cl': 'cl', 'l': 'L',
+        'unite': 'unité', 'piece': 'pièce', 'pce': 'pièce'
+      }[unite] || 'unité';
+      
+      return { unite: uniteNormalisee, quantiteBase };
+    }
+    
+    // Si pas de nombre, c'est une unité simple
+    const uniteSimple = uniteAchat.toLowerCase();
+    const uniteNormalisee = {
+      'g': 'g', 'kg': 'kg',
+      'ml': 'ml', 'cl': 'cl', 'l': 'L',
+      'unite': 'unité', 'piece': 'pièce', 'pce': 'pièce'
+    }[uniteSimple] || 'kg';
+    
+    return { unite: uniteNormalisee, quantiteBase: 1 };
+  };
+
   // Fonction de conversion d'unités vers grammes/ml
   const convertToBaseUnit = (quantite, unite) => {
     const conversions = {
