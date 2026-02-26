@@ -2156,12 +2156,15 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
     setForm({
       nom: fiche.nom,
       restaurant_id: fiche.restaurant_id,
-      type_fiche: fiche.type_fiche,
+      type_fiche: fiche.type_fiche || "produit_fini",
       famille: fiche.famille,
+      is_food: fiche.is_food !== undefined ? fiche.is_food : true,
       nb_portions: fiche.nb_portions.toString(),
       prix_vente: fiche.prix_vente.toString(),
       statut: fiche.statut,
-      ingredients: fiche.ingredients || []
+      ingredients: fiche.ingredients || [],
+      linked_produit_ids: fiche.linked_produit_ids || [],
+      photo_url: fiche.photo_url || null
     });
     setEditingId(fiche.id);
     setShowForm(true);
