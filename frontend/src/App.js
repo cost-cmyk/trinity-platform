@@ -2223,12 +2223,21 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
   };
 
   const calculateCosts = () => {
-    const coutTotal = form.ingredients.reduce((sum, ing) => sum + (ing.cout_ligne || ing.quantite * ing.prix_unitaire), 0);
+    const coutTotal = form.ingredients.reduce((sum, ing) => sum + (ing.cout_ligne || 0), 0);
     const nbPortions = parseInt(form.nb_portions) || 1;
     const prixVente = parseFloat(form.prix_vente) || 0;
     const coutPortion = coutTotal / nbPortions;
     const foodCost = prixVente > 0 ? (coutPortion / prixVente) * 100 : 0;
-    return { coutTotal, coutPortion, foodCost };
+    
+    // Calculer le poids total (uniquement pour les ingrédients avec unité de poids)
+    const poidsTotal = form.ingredients.reduce((sum, ing) => {
+      if (['g', 'kg', 'ml', 'L', 'cl'].includes(ing.unite)) {
+        return sum + convertToBaseUnit(ing.quantite, ing.unite);
+      }
+      return sum;
+    }, 0);
+    
+    return { coutTotal, coutPortion, foodCost, poidsTotal };
   };
 
   const handleSubmit = async () => {
