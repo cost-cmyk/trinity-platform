@@ -1903,7 +1903,7 @@ const ProduitsAchatsModule = ({ restaurants }) => {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
