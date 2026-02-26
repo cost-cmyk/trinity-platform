@@ -2772,14 +2772,17 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                           key={idx}
                           type="button"
                           onClick={() => {
+                            const { unite, quantiteBase } = parseUniteAchat(achat.unite);
                             setNewIngredient({
                               nom: achat.produit,
                               quantite: "",
-                              unite: achat.unite || "kg",
+                              unite: unite,
                               prix_unitaire: achat.prix_unitaire.toString(),
                               type_ingredient: "achat",
                               fournisseur: achat.fournisseur,
-                              date_achat: achat.date_achat
+                              date_achat: achat.date_achat,
+                              quantite_base_achat: quantiteBase, // Quantité de base de l'unité d'achat
+                              unite_achat_originale: achat.unite // Pour affichage
                             });
                             setAchatsSearch("");
                             setAchatsResults([]);
