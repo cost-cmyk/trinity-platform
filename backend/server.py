@@ -1063,12 +1063,41 @@ async def get_restaurant_dashboard(restaurant_id: str, date: Optional[str] = Non
     if not restaurant:
         raise HTTPException(status_code=404, detail="Restaurant non trouvé")
     
-    # Filtre par date si fourni
+    # Dates disponibles pour ce restaurant
+    dates_pipeline = [
+        {"$match": {"restaurant_id": restaurant_id}},
+        {"$group": {"_id": "$date_vente"}},
+        {"$sort": {"_id": -1}},
+        {"$limit": 60}
+    ]
+    dates_result = await db.ventes.aggregate(dates_pipeline).to_list(60)
+    dates_disponibles = [d["_id"] for d in dates_result]
+    
+    # Date du jour = première date disponible si pas de date fournie
+    date_jour = date if date else (dates_disponibles[0] if dates_disponibles else None)
+    
+    # Calculer le mois à partir de la date du jour
+    if date_jour:
+        # Format: YYYY-MM
+        mois_courant = date_jour[:7]
+    else:
+        mois_courant = None
+    
+    # Query pour le jour
+    query_jour = {"restaurant_id": restaurant_id}
+    if date_jour:
+        query_jour["date_vente"] = date_jour
+    
+    # Query pour le mois (toutes les dates du mois)
+    query_mois = {"restaurant_id": restaurant_id}
+    if mois_courant:
+        query_mois["date_vente"] = {"$regex": f"^{mois_courant}"}
+    
+    # Stats globales du restaurant (selon la date sélectionnée ou tout)
     ventes_query = {"restaurant_id": restaurant_id}
     if date:
         ventes_query["date_vente"] = date
     
-    # Stats globales du restaurant
     pipeline_global = [
         {"$match": ventes_query},
         {"$group": {
@@ -1087,22 +1116,10 @@ async def get_restaurant_dashboard(restaurant_id: str, date: Optional[str] = Non
         "total_remise": 0, "total_quantite": 0, "nb_lignes": 0
     }
     
-    # Top 10 ventes Global
-    top_global = await db.ventes.aggregate([
-        {"$match": ventes_query},
-        {"$group": {
-            "_id": "$produit_nom",
-            "quantite": {"$sum": "$quantite"},
-            "ca": {"$sum": "$ca_ttc"},
-            "is_food": {"$first": "$is_food"}
-        }},
-        {"$sort": {"quantite": -1}},
-        {"$limit": 10}
-    ]).to_list(10)
-    
-    # Top 10 Nourriture
-    top_food = await db.ventes.aggregate([
-        {"$match": {**ventes_query, "is_food": True}},
+    # ===== TOP 10 DU JOUR =====
+    # Nourriture du jour
+    top_jour_food = await db.ventes.aggregate([
+        {"$match": {**query_jour, "is_food": True}},
         {"$group": {
             "_id": "$produit_nom",
             "quantite": {"$sum": "$quantite"},
@@ -1112,9 +1129,9 @@ async def get_restaurant_dashboard(restaurant_id: str, date: Optional[str] = Non
         {"$limit": 10}
     ]).to_list(10)
     
-    # Top 10 Boissons
-    top_drink = await db.ventes.aggregate([
-        {"$match": {**ventes_query, "is_food": False}},
+    # Boissons du jour
+    top_jour_drink = await db.ventes.aggregate([
+        {"$match": {**query_jour, "is_food": False}},
         {"$group": {
             "_id": "$produit_nom",
             "quantite": {"$sum": "$quantite"},
@@ -1124,8 +1141,32 @@ async def get_restaurant_dashboard(restaurant_id: str, date: Optional[str] = Non
         {"$limit": 10}
     ]).to_list(10)
     
-    # Répartition par catégorie (famille)
-    # On utilise la famille depuis les ventes si disponible, sinon le nom du produit
+    # ===== TOP 10 DU MOIS =====
+    # Nourriture du mois
+    top_mois_food = await db.ventes.aggregate([
+        {"$match": {**query_mois, "is_food": True}},
+        {"$group": {
+            "_id": "$produit_nom",
+            "quantite": {"$sum": "$quantite"},
+            "ca": {"$sum": "$ca_ttc"}
+        }},
+        {"$sort": {"quantite": -1}},
+        {"$limit": 10}
+    ]).to_list(10)
+    
+    # Boissons du mois
+    top_mois_drink = await db.ventes.aggregate([
+        {"$match": {**query_mois, "is_food": False}},
+        {"$group": {
+            "_id": "$produit_nom",
+            "quantite": {"$sum": "$quantite"},
+            "ca": {"$sum": "$ca_ttc"}
+        }},
+        {"$sort": {"quantite": -1}},
+        {"$limit": 10}
+    ]).to_list(10)
+    
+    # Répartition par catégorie
     by_category = await db.ventes.aggregate([
         {"$match": ventes_query},
         {"$group": {
@@ -1148,19 +1189,10 @@ async def get_restaurant_dashboard(restaurant_id: str, date: Optional[str] = Non
     
     food_cost_data = fiches_stats[0] if fiches_stats else {"avg_food_cost": 0, "total_cout": 0}
     
-    # Dates disponibles pour ce restaurant
-    dates_pipeline = [
-        {"$match": {"restaurant_id": restaurant_id}},
-        {"$group": {"_id": "$date_vente"}},
-        {"$sort": {"_id": -1}},
-        {"$limit": 30}
-    ]
-    dates_result = await db.ventes.aggregate(dates_pipeline).to_list(30)
-    dates_disponibles = [d["_id"] for d in dates_result]
-    
     return {
         "restaurant": restaurant,
-        "date_selectionnee": date,
+        "date_selectionnee": date_jour,
+        "mois_courant": mois_courant,
         "dates_disponibles": dates_disponibles,
         "kpis": {
             "ca_total": round(stats.get("ca_total", 0), 0),
@@ -1171,9 +1203,14 @@ async def get_restaurant_dashboard(restaurant_id: str, date: Optional[str] = Non
             "nb_lignes": stats.get("nb_lignes", 0),
             "avg_food_cost": round(food_cost_data.get("avg_food_cost", 0) or 0, 1)
         },
-        "top_global": [{"nom": t["_id"], "quantite": t["quantite"], "ca": round(t["ca"], 0), "is_food": t.get("is_food", True)} for t in top_global],
-        "top_food": [{"nom": t["_id"], "quantite": t["quantite"], "ca": round(t["ca"], 0)} for t in top_food],
-        "top_drink": [{"nom": t["_id"], "quantite": t["quantite"], "ca": round(t["ca"], 0)} for t in top_drink],
+        "top_jour": {
+            "food": [{"nom": t["_id"], "quantite": t["quantite"], "ca": round(t["ca"], 0)} for t in top_jour_food],
+            "drink": [{"nom": t["_id"], "quantite": t["quantite"], "ca": round(t["ca"], 0)} for t in top_jour_drink]
+        },
+        "top_mois": {
+            "food": [{"nom": t["_id"], "quantite": t["quantite"], "ca": round(t["ca"], 0)} for t in top_mois_food],
+            "drink": [{"nom": t["_id"], "quantite": t["quantite"], "ca": round(t["ca"], 0)} for t in top_mois_drink]
+        },
         "repartition": {
             "food": next((c for c in by_category if c["_id"] == True), {"ca": 0, "quantite": 0, "remise": 0}),
             "drink": next((c for c in by_category if c["_id"] == False), {"ca": 0, "quantite": 0, "remise": 0})
