@@ -1044,38 +1044,52 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
         />
       )}
 
-      {/* Top Ventes (optionnel) */}
-      {stats.top_ventes && stats.top_ventes.length > 0 && (
+      {/* Top Ventes - SUPPRIMÉ - Remplacé par graphique restaurants */}
+      
+      {/* === 6. GRAPHIQUE PERFORMANCE RESTAURANTS === */}
+      {restaurantStats.length > 0 && (
         <div className="trinity-card">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-4">
-            Top 10 Ventes Groupe
-          </h3>
-          <div className="space-y-2">
-            {stats.top_ventes.slice(0, 10).map((item, idx) => {
-              const maxCa = stats.top_ventes[0]?.ca || 1;
-              const pct = (item.ca / maxCa * 100);
-              
-              return (
-                <div key={idx}>
-                  <div className="flex justify-between items-center text-xs mb-1">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 text-muted-foreground font-mono">{idx + 1}</span>
-                      <span>{item.nom}</span>
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] ${item.is_food ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'}`}>
-                        {item.is_food ? 'N' : 'B'}
+          <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-4">
+            📈 Performance Restaurants - CA du Jour
+          </div>
+          
+          <div className="space-y-3">
+            {restaurantStats
+              .sort((a, b) => b.ca_total - a.ca_total)
+              .slice(0, 8)
+              .map((r, idx) => {
+                const maxCa = restaurantStats[0]?.ca_total || 1;
+                const pct = (r.ca_total / maxCa * 100);
+                
+                return (
+                  <div 
+                    key={r.id}
+                    className="cursor-pointer hover:bg-accent/30 p-2 rounded transition"
+                    onClick={() => handleSelectRestaurant(restaurants.find(resto => resto.id === r.id))}
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 text-xs font-mono text-muted-foreground">{idx + 1}</span>
+                        <div 
+                          className="w-2 h-2 rounded-full" 
+                          style={{ backgroundColor: r.couleur }}
+                        />
+                        <span className="text-sm font-medium">{r.nom}</span>
+                        <span className="text-xs text-muted-foreground">({r.type})</span>
+                      </div>
+                      <span className="text-sm font-mono font-bold" style={{ color: r.couleur }}>
+                        {fmtPrice(r.ca_total)} F
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">{item.quantite}</span>
-                      <span className="font-mono font-bold">{fmtPrice(item.ca)} F</span>
+                    <div className="h-2 bg-background rounded-full overflow-hidden">
+                      <div 
+                        className="h-full transition-all" 
+                        style={{ width: `${pct}%`, backgroundColor: r.couleur }} 
+                      />
                     </div>
                   </div>
-                  <div className="h-1 bg-background rounded-full overflow-hidden">
-                    <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
         </div>
       )}
