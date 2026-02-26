@@ -2128,12 +2128,28 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
 
   const resetForm = () => {
     setForm({
-      nom: "", restaurant_id: "", type_fiche: "standard", famille: "",
-      nb_portions: "1", prix_vente: "", statut: "brouillon", ingredients: []
+      nom: "", 
+      restaurant_id: "", 
+      type_fiche: "produit_fini", 
+      famille: "",
+      is_food: true,
+      nb_portions: "1", 
+      prix_vente: "", 
+      statut: "brouillon", 
+      ingredients: [],
+      linked_produit_ids: [],
+      photo_url: null
     });
-    setNewIngredient({ nom: "", quantite: "", unite: "g", prix_unitaire: "" });
+    setNewIngredient({ nom: "", quantite: "", unite: "g", prix_unitaire: "", type_ingredient: "achat", fournisseur: null, date_achat: null });
     setEditingId(null);
     setShowForm(false);
+    setIngredientTab("achat");
+    setAchatsSearch("");
+    setFichesSearch("");
+    setProduitsSearch("");
+    setAchatsResults([]);
+    setFichesResults([]);
+    setProduitsResults([]);
   };
 
   const handleEdit = (fiche) => {
