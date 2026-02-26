@@ -2072,8 +2072,8 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
     return quantite * (conversions[unite] || 1);
   };
 
-  // Recherche d'achats pour autocomplétion
-  const searchAchats = async (query) => {
+  // Recherche d'achats pour autocomplétion (avec debounce)
+  const searchAchatsImmediate = async (query) => {
     if (!query || query.length < 2 || !form.restaurant_id) {
       setAchatsResults([]);
       return;
@@ -2096,6 +2096,12 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
       console.error("Erreur recherche achats:", err);
     }
   };
+
+  // Version avec debounce pour éviter trop d'appels
+  const searchAchats = useCallback(
+    debounce((query) => searchAchatsImmediate(query), 300),
+    [form.restaurant_id]
+  );
 
   // Recherche de sous-fiches pour autocomplétion
   const searchFiches = async (query) => {
