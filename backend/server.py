@@ -53,6 +53,68 @@ except Exception as e:
 app = FastAPI(title="Trinity API", version="1.0.0")
 api_router = APIRouter(prefix="/api")
 
+# ====================== MIGRATIONS ======================
+
+async def migrate_restaurants():
+    """Migration pour renommer et ajouter les restaurants manquants"""
+    try:
+        logger.info("🔄 Démarrage de la migration des restaurants...")
+        
+        # Définir les restaurants attendus
+        expected_restaurants = [
+            {"nom": "Meherio", "code": "MEH", "couleur": "#f97316"},
+            {"nom": "Urban Café", "code": "URB", "couleur": "#06b6d4"},
+            {"nom": "Jimmy Punaauia", "code": "JP", "couleur": "#8b5cf6"},
+            {"nom": "Jimmy Papeete", "code": "JPP", "couleur": "#84cc16"},
+            {"nom": "Laboratoire", "code": "LAB", "couleur": "#10b981", "type": "PRODUCTION"},
+            {"nom": "Instant Présent", "code": "IP", "couleur": "#ec4899"},
+            {"nom": "Urban Garden", "code": "UG", "couleur": "#3b82f6"},
+            {"nom": "Urban Fare Ute", "code": "UFU", "couleur": "#f59e0b"}
+        ]
+        
+        # Récupérer les restaurants existants
+        existing = await db.restaurants.find({}, {"_id": 0}).to_list(100)
+        existing_names = {r["nom"]: r for r in existing}
+        
+        # Renommer les anciens restaurants
+        rename_map = {
+            "Jimmy2": "Jimmy Punaauia",
+            "Jimmy": "Jimmy Papeete"
+        }
+        
+        for old_name, new_name in rename_map.items():
+            if old_name in existing_names:
+                logger.info(f"  ✏️  Renommage: {old_name} → {new_name}")
+                await db.restaurants.update_one(
+                    {"nom": old_name},
+                    {"$set": {"nom": new_name}}
+                )
+                # Mettre à jour le dictionnaire local
+                r = existing_names.pop(old_name)
+                r["nom"] = new_name
+                existing_names[new_name] = r
+        
+        # Ajouter les restaurants manquants
+        for expected in expected_restaurants:
+            if expected["nom"] not in existing_names:
+                logger.info(f"  ➕ Ajout: {expected['nom']}")
+                new_resto = {
+                    "id": str(uuid.uuid4()),
+                    "nom": expected["nom"],
+                    "code": expected["code"],
+                    "type": expected.get("type", "RESTAURANT"),
+                    "couleur": expected["couleur"],
+                    "jours_fermeture": [],
+                    "actif": True,
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                }
+                await db.restaurants.insert_one(new_resto)
+        
+        logger.info("✅ Migration des restaurants terminée")
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur lors de la migration des restaurants: {e}")
+
 # ====================== MODELS ======================
 
 class RestaurantBase(BaseModel):
