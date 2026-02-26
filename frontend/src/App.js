@@ -416,72 +416,113 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
               </div>
             </div>
 
-            {/* Top Ventes en 3 colonnes */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Top 10 Global */}
-              <div className="trinity-card">
-                <h3 className="text-lg font-semibold mb-4">Top 10 Global</h3>
-                {restoDashboard.top_global?.length > 0 ? (
-                  <div className="space-y-2">
-                    {restoDashboard.top_global.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-3">
-                        <span className="w-5 text-xs font-mono text-muted-foreground">{idx + 1}</span>
-                        <Pill type={item.is_food ? "food" : "drink"}>
-                          {item.is_food ? "N" : "B"}
-                        </Pill>
-                        <span className="flex-1 text-sm truncate">{item.nom}</span>
-                        <span className="text-xs font-mono text-muted-foreground">{item.quantite}</span>
-                        <span className="text-xs font-mono">{fmtPrice(item.ca)}</span>
-                      </div>
-                    ))}
+            {/* TOP 10 DU JOUR */}
+            <div>
+              <h2 className="text-xl font-bold mb-4">
+                Top 10 du Jour 
+                <span className="text-sm font-normal text-muted-foreground ml-2">
+                  ({selectedDate ? new Date(selectedDate).toLocaleDateString('fr-FR') : 'Toutes dates'})
+                </span>
+              </h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Top 10 Nourriture du Jour */}
+                <div className="trinity-card">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-3 h-3 rounded-full bg-orange-500" />
+                    <h3 className="text-lg font-semibold">Nourriture</h3>
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Aucune vente</p>
-                )}
-              </div>
-
-              {/* Top 10 Nourriture */}
-              <div className="trinity-card">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-3 h-3 rounded-full bg-orange-500" />
-                  <h3 className="text-lg font-semibold">Top 10 Nourriture</h3>
+                  {restoDashboard.top_jour?.food?.length > 0 ? (
+                    <div className="space-y-2">
+                      {restoDashboard.top_jour.food.map((item, idx) => (
+                        <div key={idx} className="flex items-center gap-3">
+                          <span className="w-5 text-xs font-mono text-muted-foreground">{idx + 1}</span>
+                          <span className="flex-1 text-sm truncate">{item.nom}</span>
+                          <span className="text-xs font-mono text-muted-foreground">{item.quantite}</span>
+                          <span className="text-xs font-mono">{fmtPrice(item.ca)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Aucune vente</p>
+                  )}
                 </div>
-                {restoDashboard.top_food?.length > 0 ? (
-                  <div className="space-y-2">
-                    {restoDashboard.top_food.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-3">
-                        <span className="w-5 text-xs font-mono text-muted-foreground">{idx + 1}</span>
-                        <span className="flex-1 text-sm truncate">{item.nom}</span>
-                        <span className="text-xs font-mono text-muted-foreground">{item.quantite}</span>
-                        <span className="text-xs font-mono">{fmtPrice(item.ca)}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Aucune vente</p>
-                )}
-              </div>
 
-              {/* Top 10 Boissons */}
-              <div className="trinity-card">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-3 h-3 rounded-full bg-cyan-500" />
-                  <h3 className="text-lg font-semibold">Top 10 Boissons</h3>
-                </div>
-                {restoDashboard.top_drink?.length > 0 ? (
-                  <div className="space-y-2">
-                    {restoDashboard.top_drink.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-3">
-                        <span className="w-5 text-xs font-mono text-muted-foreground">{idx + 1}</span>
-                        <span className="flex-1 text-sm truncate">{item.nom}</span>
-                        <span className="text-xs font-mono text-muted-foreground">{item.quantite}</span>
-                        <span className="text-xs font-mono">{fmtPrice(item.ca)}</span>
-                      </div>
-                    ))}
+                {/* Top 10 Boissons du Jour */}
+                <div className="trinity-card">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-3 h-3 rounded-full bg-cyan-500" />
+                    <h3 className="text-lg font-semibold">Boissons</h3>
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Aucune vente</p>
-                )}
+                  {restoDashboard.top_jour?.drink?.length > 0 ? (
+                    <div className="space-y-2">
+                      {restoDashboard.top_jour.drink.map((item, idx) => (
+                        <div key={idx} className="flex items-center gap-3">
+                          <span className="w-5 text-xs font-mono text-muted-foreground">{idx + 1}</span>
+                          <span className="flex-1 text-sm truncate">{item.nom}</span>
+                          <span className="text-xs font-mono text-muted-foreground">{item.quantite}</span>
+                          <span className="text-xs font-mono">{fmtPrice(item.ca)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Aucune vente</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* TOP 10 DU MOIS */}
+            <div>
+              <h2 className="text-xl font-bold mb-4">
+                Top 10 Cumul du Mois
+                <span className="text-sm font-normal text-muted-foreground ml-2">
+                  ({restoDashboard.mois_courant ? restoDashboard.mois_courant : 'Tout'})
+                </span>
+              </h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Top 10 Nourriture du Mois */}
+                <div className="trinity-card">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-3 h-3 rounded-full bg-orange-500" />
+                    <h3 className="text-lg font-semibold">Nourriture</h3>
+                  </div>
+                  {restoDashboard.top_mois?.food?.length > 0 ? (
+                    <div className="space-y-2">
+                      {restoDashboard.top_mois.food.map((item, idx) => (
+                        <div key={idx} className="flex items-center gap-3">
+                          <span className="w-5 text-xs font-mono text-muted-foreground">{idx + 1}</span>
+                          <span className="flex-1 text-sm truncate">{item.nom}</span>
+                          <span className="text-xs font-mono text-muted-foreground">{item.quantite}</span>
+                          <span className="text-xs font-mono">{fmtPrice(item.ca)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Aucune vente</p>
+                  )}
+                </div>
+
+                {/* Top 10 Boissons du Mois */}
+                <div className="trinity-card">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-3 h-3 rounded-full bg-cyan-500" />
+                    <h3 className="text-lg font-semibold">Boissons</h3>
+                  </div>
+                  {restoDashboard.top_mois?.drink?.length > 0 ? (
+                    <div className="space-y-2">
+                      {restoDashboard.top_mois.drink.map((item, idx) => (
+                        <div key={idx} className="flex items-center gap-3">
+                          <span className="w-5 text-xs font-mono text-muted-foreground">{idx + 1}</span>
+                          <span className="flex-1 text-sm truncate">{item.nom}</span>
+                          <span className="text-xs font-mono text-muted-foreground">{item.quantite}</span>
+                          <span className="text-xs font-mono">{fmtPrice(item.ca)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Aucune vente</p>
+                  )}
+                </div>
               </div>
             </div>
 
