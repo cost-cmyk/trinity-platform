@@ -2507,13 +2507,17 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                 placeholder="Ex: Burger Classic"
                 data-testid="fiche-name-input"
               />
-              <Input
-                label="Prix de vente TTC (F)"
-                type="number"
-                value={form.prix_vente}
-                onChange={(v) => setForm({ ...form, prix_vente: v })}
-                placeholder="0"
-              />
+              
+              {/* Prix de vente uniquement pour "Produit fini" */}
+              {form.type_fiche === "produit_fini" && (
+                <Input
+                  label="Prix de vente TTC (F)"
+                  type="number"
+                  value={form.prix_vente}
+                  onChange={(v) => setForm({ ...form, prix_vente: v })}
+                  placeholder="0"
+                />
+              )}
               
               {/* Toggle Nourriture/Boisson */}
               <div>
