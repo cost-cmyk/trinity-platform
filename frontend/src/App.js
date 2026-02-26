@@ -1702,35 +1702,54 @@ const ProduitsAchatsModule = ({ restaurants }) => {
         </p>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div className="trinity-card" style={{ borderLeft: '3px solid #3b82f6' }}>
-          <div className="text-xs text-muted-foreground uppercase mb-1">Produits</div>
-          <div className="text-3xl font-bold" style={{ color: '#3b82f6' }}>{stats.nbProduits}</div>
-          <div className="text-xs text-muted-foreground mt-1">Au 30</div>
+      {/* Si aucune donnée, afficher un message d'accueil */}
+      {achats.length === 0 && !loading ? (
+        <div className="trinity-card" style={{ borderLeft: '4px solid #3b82f6' }}>
+          <div className="text-center py-12">
+            <Package className="w-16 h-16 mx-auto mb-4 text-primary opacity-50" />
+            <h3 className="text-xl font-bold mb-2">Aucune donnée d'achats</h3>
+            <p className="text-muted-foreground mb-6">
+              Importez un fichier d'achats pour commencer à suivre vos produits et fournisseurs.
+            </p>
+            <button
+              onClick={() => window.scrollTo(0, 0)}
+              className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition"
+            >
+              ➜ Aller à Import Données
+            </button>
+          </div>
         </div>
+      ) : (
+        <>
+          {/* KPIs */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="trinity-card" style={{ borderLeft: '3px solid #3b82f6' }}>
+              <div className="text-xs text-muted-foreground uppercase mb-1">Produits</div>
+              <div className="text-3xl font-bold" style={{ color: '#3b82f6' }}>{stats.nbProduits}</div>
+              <div className="text-xs text-muted-foreground mt-1">Au 30</div>
+            </div>
 
-        <div className="trinity-card" style={{ borderLeft: '3px solid #f97316' }}>
-          <div className="text-xs text-muted-foreground uppercase mb-1">Fournisseurs</div>
-          <div className="text-3xl font-bold" style={{ color: '#f97316' }}>{stats.nbFournisseurs}</div>
-        </div>
+            <div className="trinity-card" style={{ borderLeft: '3px solid #f97316' }}>
+              <div className="text-xs text-muted-foreground uppercase mb-1">Fournisseurs</div>
+              <div className="text-3xl font-bold" style={{ color: '#f97316' }}>{stats.nbFournisseurs}</div>
+            </div>
 
-        <div className="trinity-card" style={{ borderLeft: '3px solid #3b82f6' }}>
-          <div className="text-xs text-muted-foreground uppercase mb-1">Catégories</div>
-          <div className="text-3xl font-bold" style={{ color: '#3b82f6' }}>{stats.nbCategories}</div>
-        </div>
+            <div className="trinity-card" style={{ borderLeft: '3px solid #3b82f6' }}>
+              <div className="text-xs text-muted-foreground uppercase mb-1">Catégories</div>
+              <div className="text-3xl font-bold" style={{ color: '#3b82f6' }}>{stats.nbCategories}</div>
+            </div>
 
-        <div className="trinity-card" style={{ borderLeft: '3px solid #f87171' }}>
-          <div className="text-xs text-muted-foreground uppercase mb-1">Avec Hausse</div>
-          <div className="text-3xl font-bold" style={{ color: '#f87171' }}>{stats.avecHausse}</div>
-          <div className="text-xs text-muted-foreground mt-1">&gt;0%</div>
-        </div>
+            <div className="trinity-card" style={{ borderLeft: '3px solid #f87171' }}>
+              <div className="text-xs text-muted-foreground uppercase mb-1">Avec Hausse</div>
+              <div className="text-3xl font-bold" style={{ color: '#f87171' }}>{stats.avecHausse}</div>
+              <div className="text-xs text-muted-foreground mt-1">&gt;0%</div>
+            </div>
 
-        <div className="trinity-card" style={{ borderLeft: '3px solid #f97316' }}>
-          <div className="text-xs text-muted-foreground uppercase mb-1">Multi-Fourn.</div>
-          <div className="text-3xl font-bold" style={{ color: '#f97316' }}>{stats.multiF}</div>
-        </div>
-      </div>
+            <div className="trinity-card" style={{ borderLeft: '3px solid #f97316' }}>
+              <div className="text-xs text-muted-foreground uppercase mb-1">Multi-Fourn.</div>
+              <div className="text-3xl font-bold" style={{ color: '#f97316' }}>{stats.multiF}</div>
+            </div>
+          </div>
 
       {/* Filtres Restaurant */}
       <div className="flex flex-wrap gap-2">
