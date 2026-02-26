@@ -2970,8 +2970,6 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
               </div>
             </div>
           )}
-            </div>
-          )}
 
           <Select
             label="Statut"
