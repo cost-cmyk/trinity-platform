@@ -1648,6 +1648,123 @@ async def get_restaurant_dashboard(restaurant_id: str, date: Optional[str] = Non
 
 # ====================== CATEGORIES ======================
 
+
+# ====================== COÛT THÉORIQUE ======================
+
+@api_router.get("/dashboard/restaurant/{restaurant_id}/cout-theorique")
+async def get_cout_theorique(restaurant_id: str, date: Optional[str] = None):
+    """Calcule le coût théorique basé sur les fiches techniques"""
+    
+    # Vérifier que le restaurant existe
+    restaurant = await db.restaurants.find_one({"id": restaurant_id}, {"_id": 0})
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant non trouvé")
+    
+    # Query pour les ventes
+    ventes_query = {"restaurant_id": restaurant_id}
+    if date:
+        ventes_query["date_vente"] = date
+    
+    # Récupérer toutes les ventes
+    ventes = await db.ventes.find(ventes_query, {"_id": 0}).to_list(10000)
+    
+    # Récupérer tous les produits du restaurant avec leurs fiches techniques
+    produits = await db.produits.find({"restaurant_id": restaurant_id}, {"_id": 0}).to_list(10000)
+    produits_map = {p["nom"]: p for p in produits}
+    
+    # Récupérer toutes les fiches techniques du restaurant
+    fiches = await db.fiches_techniques.find({"restaurant_id": restaurant_id}, {"_id": 0}).to_list(10000)
+    fiches_map = {f["id"]: f for f in fiches}
+    
+    # Calculer CA et coût par type
+    ca_food_total = 0
+    ca_drink_total = 0
+    cout_food_total = 0
+    cout_drink_total = 0
+    
+    ventes_avec_cout = []
+    ventes_sans_fiche = []
+    
+    for vente in ventes:
+        ca = vente.get("ca_ttc", 0)
+        quantite = vente.get("quantite", 1)
+        is_food = vente.get("is_food", True)
+        nom_produit = vente.get("produit_nom", "")
+        
+        # Ajouter au CA
+        if is_food:
+            ca_food_total += ca
+        else:
+            ca_drink_total += ca
+        
+        # Chercher le produit correspondant
+        produit = produits_map.get(nom_produit)
+        
+        if produit and produit.get("fiche_technique_id"):
+            # Le produit a une fiche technique
+            fiche = fiches_map.get(produit["fiche_technique_id"])
+            
+            if fiche:
+                # Calculer le coût théorique basé sur les ingrédients
+                cout_unitaire = 0
+                
+                for ingredient in fiche.get("ingredients", []):
+                    ingredient_produit_id = ingredient.get("produit_id")
+                    quantite_ingredient = ingredient.get("quantite", 0)
+                    
+                    # Chercher le produit ingrédient pour avoir son prix
+                    ingredient_produit = next((p for p in produits if p["id"] == ingredient_produit_id), None)
+                    
+                    if ingredient_produit:
+                        # Prix d'achat de l'ingrédient (on utilise prix_vente en attendant import achats)
+                        prix_ingredient = ingredient_produit.get("prix_vente", 0)
+                        cout_unitaire += prix_ingredient * quantite_ingredient
+                
+                cout_total_ligne = cout_unitaire * quantite
+                
+                if is_food:
+                    cout_food_total += cout_total_ligne
+                else:
+                    cout_drink_total += cout_total_ligne
+                
+                ventes_avec_cout.append({
+                    "produit": nom_produit,
+                    "ca": ca,
+                    "cout": cout_total_ligne,
+                    "quantite": quantite,
+                    "is_food": is_food
+                })
+            else:
+                ventes_sans_fiche.append(nom_produit)
+        else:
+            ventes_sans_fiche.append(nom_produit)
+    
+    # Calculer les ratios
+    ca_total = ca_food_total + ca_drink_total
+    cout_total = cout_food_total + cout_drink_total
+    
+    food_cost_pct = (cout_food_total / ca_food_total * 100) if ca_food_total > 0 else 0
+    beverage_cost_pct = (cout_drink_total / ca_drink_total * 100) if ca_drink_total > 0 else 0
+    cout_global_pct = (cout_total / ca_total * 100) if ca_total > 0 else 0
+    
+    return {
+        "success": True,
+        "restaurant": restaurant["nom"],
+        "date": date or "Toutes les dates",
+        "ca_total": round(ca_total, 2),
+        "ca_food": round(ca_food_total, 2),
+        "ca_drink": round(ca_drink_total, 2),
+        "cout_total": round(cout_total, 2),
+        "cout_food": round(cout_food_total, 2),
+        "cout_drink": round(cout_drink_total, 2),
+        "food_cost_pct": round(food_cost_pct, 1),
+        "beverage_cost_pct": round(beverage_cost_pct, 1),
+        "cout_global_pct": round(cout_global_pct, 1),
+        "nb_ventes_avec_cout": len(ventes_avec_cout),
+        "nb_ventes_sans_fiche": len(ventes_sans_fiche),
+        "couverture_pct": round(len(ventes_avec_cout) / len(ventes) * 100, 1) if ventes else 0
+    }
+
 @api_router.get("/categories")
 async def get_categories():
     """Liste des catégories disponibles"""
