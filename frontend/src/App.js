@@ -771,7 +771,7 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
     <div className="space-y-4" data-testid="dashboard">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold mb-1">🎯 TEST DÉPLOIEMENT - TRINITY 2026</h1>
+        <h1 className="text-3xl font-bold mb-1">Vue Consolidée</h1>
         <p className="text-xs text-muted-foreground">Structure & flux d'activités - Février 2026</p>
       </div>
 
