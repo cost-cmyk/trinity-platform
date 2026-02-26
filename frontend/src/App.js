@@ -356,60 +356,67 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
           <div className="text-center py-8 text-muted-foreground">Chargement...</div>
         ) : (
           <>
-            {/* KPIs Restaurant */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              <KPICard 
-                label="CA Total" 
-                value={fmtK(kpis.ca_total)} 
-                suffix="F" 
-                icon={TrendingUp}
-              />
-              <KPICard 
-                label="Nourriture" 
-                value={fmtK(kpis.ca_food)} 
-                suffix="F"
-                color="text-orange-400"
-              />
-              <KPICard 
-                label="Boissons" 
-                value={fmtK(kpis.ca_drink)} 
-                suffix="F"
-                color="text-cyan-400"
-              />
-              <KPICard 
-                label="Total Remises" 
-                value={fmtK(kpis.total_remise)} 
-                suffix="F"
-                color="text-purple-400"
-              />
-              <KPICard 
-                label="Articles vendus" 
-                value={fmtK(kpis.total_quantite)}
-              />
-              <KPICard 
-                label="Food Cost Moyen" 
-                value={fmtPct(kpis.avg_food_cost)}
-                color={getFoodCostColor(kpis.avg_food_cost)}
-              />
+            {/* === 1. KPIs EN HAUT === */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="trinity-card" style={{ borderLeft: `3px solid ${selectedRestaurant.couleur}` }}>
+                <div className="text-xs text-muted-foreground uppercase mb-1">CA Total</div>
+                <div className="text-2xl font-bold" style={{ fontFamily: "'DM Mono', monospace", color: selectedRestaurant.couleur }}>
+                  {fmtK(kpis.ca_total)} F
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">{kpis.total_quantite} articles</div>
+              </div>
+              
+              <div className="trinity-card" style={{ borderLeft: '3px solid #34d399' }}>
+                <div className="text-xs text-muted-foreground uppercase mb-1">Nourriture</div>
+                <div className="text-2xl font-bold" style={{ fontFamily: "'DM Mono', monospace", color: '#34d399' }}>
+                  {fmtK(kpis.ca_food)} F
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">{kpis.ca_total > 0 ? Math.round(pctFood) : 0}%</div>
+              </div>
+              
+              <div className="trinity-card" style={{ borderLeft: '3px solid #fbbf24' }}>
+                <div className="text-xs text-muted-foreground uppercase mb-1">Boisson</div>
+                <div className="text-2xl font-bold" style={{ fontFamily: "'DM Mono', monospace", color: '#fbbf24' }}>
+                  {fmtK(kpis.ca_drink)} F
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">{kpis.ca_total > 0 ? Math.round(pctDrink) : 0}%</div>
+              </div>
+              
+              <div className="trinity-card" style={{ borderLeft: '3px solid #f472b6' }}>
+                <div className="text-xs text-muted-foreground uppercase mb-1">Remises</div>
+                <div className="text-2xl font-bold" style={{ fontFamily: "'DM Mono', monospace", color: '#f472b6' }}>
+                  {fmtK(kpis.total_remise)} F
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">{kpis.nb_lignes} lignes</div>
+              </div>
             </div>
 
-            {/* Répartition CA Nourriture/Boissons */}
-            <div className="trinity-card">
-              <h3 className="text-sm font-medium mb-3">Répartition CA</h3>
-              <div className="flex gap-4 mb-2">
+            {/* === 2. BARRE DE SYNTHÈSE === */}
+            <div className="trinity-card" style={{ borderLeft: `3px solid ${selectedRestaurant.couleur}` }}>
+              <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-orange-500" />
-                  <span className="text-sm">Nourriture {fmtPct(pctFood)}</span>
+                  <span className="text-lg">{selectedRestaurant.type === 'PRODUCTION' ? '🏭' : '🍽️'}</span>
+                  <span className="font-bold text-sm" style={{ color: selectedRestaurant.couleur }}>
+                    {selectedRestaurant.nom}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-cyan-500" />
-                  <span className="text-sm">Boissons {fmtPct(pctDrink)}</span>
-                </div>
+                <span className="text-xl font-bold" style={{ fontFamily: "'DM Mono', monospace" }}>
+                  {fmtK(kpis.ca_total)} F
+                </span>
               </div>
-              <div className="h-4 bg-secondary rounded-full overflow-hidden flex">
-                <div className="bg-orange-500 h-full" style={{ width: `${pctFood}%` }} />
-                <div className="bg-cyan-500 h-full" style={{ width: `${pctDrink}%` }} />
-              </div>
+              
+              {kpis.ca_total > 0 && (
+                <>
+                  <div className="h-2.5 bg-background rounded-full overflow-hidden flex mb-2">
+                    <div className="bg-[#34d399]" style={{ width: `${pctFood}%` }} />
+                    <div className="bg-[#fbbf24]" style={{ width: `${pctDrink}%` }} />
+                  </div>
+                  <div className="flex gap-4 text-xs text-muted-foreground">
+                    <span className="text-[#34d399]">● Nourriture {fmtK(kpis.ca_food)} F</span>
+                    <span className="text-[#fbbf24]">● Boisson {fmtK(kpis.ca_drink)} F</span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* TOP 10 DU JOUR */}
