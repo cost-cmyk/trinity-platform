@@ -2560,7 +2560,85 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
             </div>
           </div>
 
-          {/* Ingredients */}
+          {/* Rattachement Carte (si produit_fini) */}
+          {form.type_fiche === "produit_fini" && (
+            <div className="trinity-card">
+              <h3 className="font-semibold mb-2">Rattachement carte <span className="text-destructive">*</span></h3>
+              <p className="text-xs text-muted-foreground mb-4">Rattacher au moins un produit de la carte</p>
+              
+              {form.linked_produit_ids.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {form.linked_produit_ids.map(prodId => {
+                    const prod = produits.find(p => p.id === prodId);
+                    return prod ? (
+                      <div key={prodId} className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm">
+                        <span>{prod.nom}</span>
+                        <button 
+                          type="button"
+                          onClick={() => setForm({ ...form, linked_produit_ids: form.linked_produit_ids.filter(id => id !== prodId) })}
+                          className="hover:bg-primary/20 rounded-full p-0.5"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : null;
+                  })}
+                </div>
+              )}
+              
+              <div className="relative">
+                <input
+                  type="text"
+                  value={produitsSearch}
+                  onChange={(e) => {
+                    setProduitsSearch(e.target.value);
+                    searchProduits(e.target.value);
+                  }}
+                  placeholder="Rechercher un produit de la carte..."
+                  className="trinity-input"
+                  disabled={!form.restaurant_id}
+                />
+                
+                {produitsResults.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {produitsResults.map(prod => (
+                      <button
+                        key={prod.id}
+                        type="button"
+                        onClick={() => {
+                          setForm({ ...form, linked_produit_ids: [...form.linked_produit_ids, prod.id] });
+                          setProduitsSearch("");
+                          setProduitsResults([]);
+                        }}
+                        className="w-full px-4 py-2 text-left hover:bg-secondary transition flex items-center justify-between"
+                      >
+                        <span>{prod.nom}</span>
+                        <span className="text-muted-foreground text-sm">{fmtPrice(prod.prix)}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {form.linked_produit_ids.length === 0 && (
+                <p className="text-xs text-amber-500 mt-2">⚠️ Rattachez au moins un produit carte pour enregistrer</p>
+              )}
+            </div>
+          )}
+
+          {/* Photo du plat (optionnel) */}
+          <div className="trinity-card">
+            <h3 className="font-semibold mb-2">Photo du plat <span className="text-muted-foreground text-sm font-normal">(optionnel)</span></h3>
+            <input
+              type="text"
+              value={form.photo_url || ""}
+              onChange={(e) => setForm({ ...form, photo_url: e.target.value })}
+              placeholder="URL de la photo"
+              className="trinity-input"
+            />
+          </div>
+
+          {/* Ingrédients & Grammages */}
           <div className="border border-border rounded-lg p-4">
             <h4 className="font-medium mb-3">Ingrédients</h4>
             
