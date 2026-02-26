@@ -2252,9 +2252,15 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
       return;
     }
     
-    // Validation : rattachement carte obligatoire pour "produit_fini"
+    // Validation : rattachement carte obligatoire uniquement pour "produit_fini"
     if (form.type_fiche === "produit_fini" && form.linked_produit_ids.length === 0) {
       toast.error("Rattachement à au moins un produit de la carte obligatoire");
+      return;
+    }
+    
+    // Validation : prix de vente requis uniquement pour "produit_fini"
+    if (form.type_fiche === "produit_fini" && (!form.prix_vente || parseFloat(form.prix_vente) <= 0)) {
+      toast.error("Prix de vente requis pour un produit fini");
       return;
     }
     
