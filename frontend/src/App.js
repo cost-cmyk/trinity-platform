@@ -2303,6 +2303,153 @@ const ImportModule = ({ restaurants, onRefresh }) => {
           </div>
         </>
       )}
+
+      {/* Tab CARTE */}
+      {activeTab === "carte" && (
+        <div className="space-y-4">
+          <div className="trinity-card">
+            <h3 className="text-lg font-medium mb-4">Import de Carte Restaurant</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Format Excel (.xlsx) avec feuilles par restaurant. Les restaurants seront créés automatiquement.
+            </p>
+            
+            <input
+              type="file"
+              accept=".xlsx"
+              onChange={handleCarteFile}
+              className="mb-4"
+              disabled={carteLoading || importing}
+            />
+            
+            {carteLoading && (
+              <div className="text-center py-8">
+                <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">Analyse du fichier...</p>
+              </div>
+            )}
+            
+            {cartePreview && !carteLoading && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <KPICard label="Restaurants" value={cartePreview.nb_restaurants} color="#34d399" />
+                  <KPICard label="Produits" value={cartePreview.nb_produits} color="#f97316" />
+                </div>
+                
+                <div className="trinity-card bg-secondary/30">
+                  <h4 className="font-medium mb-2">Restaurants détectés</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {cartePreview.restaurants.map((r, idx) => (
+                      <span key={idx} className="px-3 py-1 bg-primary/20 text-primary rounded-full text-sm">
+                        {r.nom}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="trinity-card bg-secondary/30 max-h-64 overflow-y-auto">
+                  <h4 className="font-medium mb-2">Aperçu des produits (premiers 20)</h4>
+                  <div className="space-y-1 text-sm">
+                    {cartePreview.produits.slice(0, 20).map((p, idx) => (
+                      <div key={idx} className="flex justify-between py-1 border-b border-border/30">
+                        <span>{p.nom} <span className="text-muted-foreground text-xs">({p.restaurant_nom})</span></span>
+                        <span className="font-mono">{p.prix_vente} F</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="flex justify-end gap-2">
+                  <Button variant="secondary" onClick={() => {setCartePreview(null); setCarteFile(null);}}>
+                    Annuler
+                  </Button>
+                  <Button onClick={confirmCarteImport} disabled={importing}>
+                    {importing ? "Import en cours..." : "Confirmer l'import"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Tab ACHATS */}
+      {activeTab === "achats" && (
+        <div className="space-y-4">
+          <div className="trinity-card">
+            <h3 className="text-lg font-medium mb-4">Import d'Achats Odoo</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Format Excel (.xlsx) exporté depuis Odoo avec les lignes de commande d'achat.
+            </p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Restaurant</label>
+                <select
+                  value={achatsRestaurant?.id || ""}
+                  onChange={(e) => setAchatsRestaurant(restaurants.find(r => r.id === e.target.value))}
+                  className="w-full p-2 bg-background border border-border rounded-md"
+                  disabled={achatsLoading || importing}
+                >
+                  <option value="">Sélectionnez un restaurant</option>
+                  {restaurants.map(r => (
+                    <option key={r.id} value={r.id}>{r.nom}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Fichier Odoo</label>
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  onChange={handleAchatsFile}
+                  disabled={achatsLoading || importing || !achatsRestaurant}
+                />
+              </div>
+            </div>
+            
+            {achatsLoading && (
+              <div className="text-center py-8">
+                <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">Analyse du fichier...</p>
+              </div>
+            )}
+            
+            {achatsPreview && !achatsLoading && (
+              <div className="space-y-4 mt-4">
+                <KPICard label="Lignes d'achats" value={achatsPreview.nb_achats} color="#3b82f6" />
+                
+                <div className="trinity-card bg-secondary/30 max-h-64 overflow-y-auto">
+                  <h4 className="font-medium mb-2">Aperçu des achats (premiers 20)</h4>
+                  <div className="space-y-1 text-sm">
+                    {achatsPreview.achats.slice(0, 20).map((a, idx) => (
+                      <div key={idx} className="flex justify-between py-1 border-b border-border/30">
+                        <div className="flex-1">
+                          <div>{a.produit}</div>
+                          <div className="text-xs text-muted-foreground">{a.fournisseur}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-mono">{a.total} F</div>
+                          <div className="text-xs text-muted-foreground">{a.quantite} {a.unite}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="flex justify-end gap-2">
+                  <Button variant="secondary" onClick={() => {setAchatsPreview(null); setAchatsFile(null);}}>
+                    Annuler
+                  </Button>
+                  <Button onClick={confirmAchatsImport} disabled={importing}>
+                    {importing ? "Import en cours..." : "Confirmer l'import"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 };
