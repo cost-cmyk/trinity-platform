@@ -609,13 +609,12 @@ def parse_xlsx_file(file_content: bytes, filename: str) -> List[dict]:
                 if ca_ttc == 0 and ca_ht > 0:
                     ca_ttc = ca_ht
                 
-                # Conserver les lignes avec CA TTC > 0 OU avec une remise > 0 (offres)
+                # Conserver les lignes avec CA TTC != 0 OU avec une remise > 0 (offres) OU avec quantité
                 # Ignorer uniquement les lignes complètement vides
                 if ca_ttc == 0 and quantite == 0 and remise == 0:
                     continue
                 
-                if ca_ttc < 0:
-                    continue
+                # NE PAS exclure les CA TTC négatifs - ils sont conservés
                 
                 # Remise négative = bug PSW, on la met à 0 mais on garde la ligne
                 remise_negative = remise < 0
