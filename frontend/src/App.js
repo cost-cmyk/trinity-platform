@@ -1861,7 +1861,7 @@ const ImportModule = ({ restaurants, onRefresh }) => {
               <p>• <strong>Prévisualisation :</strong> Visualisez toutes les lignes avant import</p>
               <p>• <strong>Exclusion :</strong> Décochez les lignes à ne pas importer</p>
               <p>• <strong>Annotations :</strong> Ajoutez des notes sur chaque ligne</p>
-              <p>• <strong>Remises négatives :</strong> Détectées et auto-exclues (bug PSW)</p>
+              <p>• <strong>Remises négatives :</strong> Détectées, mises à 0 (bug PSW) - lignes conservées</p>
             </div>
           </div>
         </>
