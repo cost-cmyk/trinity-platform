@@ -1843,12 +1843,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+@app.on_event("startup")
+async def startup_db_client():
+    """Verify MongoDB connection on startup"""
+    try:
+        logger.info("Verifying MongoDB connection...")
+        # Ping the database to verify connection
+        await client.admin.command('ping')
+        logger.info("✅ MongoDB connection successful!")
+        
+        # Log database info
+        collections = await db.list_collection_names()
+        logger.info(f"Connected to database '{db_name}' with {len(collections)} collections")
+        
+    except Exception as e:
+        logger.error(f"❌ MongoDB connection failed: {e}")
+        logger.error("Application will continue but database operations may fail")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    """Close MongoDB connection on shutdown"""
+    logger.info("Closing MongoDB connection...")
     client.close()
+    logger.info("MongoDB connection closed")
