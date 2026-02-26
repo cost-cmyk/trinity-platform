@@ -144,6 +144,127 @@ const Input = ({ label, value, onChange, type = "text", placeholder = "", classN
   </div>
 );
 
+// Composant Coût Théorique
+const CoutTheoriqueSection = ({ restaurantId, date, caFood, caDrink }) => {
+  const [coutData, setCoutData] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const loadCoutTheorique = async () => {
+      setLoading(true);
+      try {
+        const url = date 
+          ? `${API}/dashboard/restaurant/${restaurantId}/cout-theorique?date=${date}`
+          : `${API}/dashboard/restaurant/${restaurantId}/cout-theorique`;
+        
+        const response = await axios.get(url);
+        setCoutData(response.data);
+      } catch (err) {
+        console.error('Erreur chargement coût théorique:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (restaurantId) {
+      loadCoutTheorique();
+    }
+  }, [restaurantId, date]);
+
+  if (loading) {
+    return (
+      <div className="trinity-card">
+        <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+          Coût Théorique - Fiche Technique
+        </div>
+        <div className="text-center py-4 text-sm text-muted-foreground">Chargement...</div>
+      </div>
+    );
+  }
+
+  if (!coutData || coutData.ca_total === 0) {
+    return (
+      <div className="trinity-card">
+        <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+          Coût Théorique - Fiche Technique
+        </div>
+        <div className="text-center py-4 text-sm text-muted-foreground">
+          Aucune donnée disponible. Créez des fiches techniques pour vos produits.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="trinity-card">
+      <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-4">
+        Coût Théorique - Fiche Technique
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Food Cost Nourriture */}
+        <div className="trinity-card bg-secondary/30" style={{ borderLeft: '3px solid #34d399' }}>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-bold text-[#34d399]">● FOOD COST NOURRITURE</span>
+          </div>
+          <div className="text-3xl font-bold mb-1" style={{ fontFamily: "'DM Mono', monospace", color: '#34d399' }}>
+            {coutData.food_cost_pct.toFixed(1)}%
+          </div>
+          <div className="text-xs text-muted-foreground mb-3 space-y-0.5">
+            <div>CA: {fmtPrice(coutData.ca_food)} F</div>
+            <div>Coût: {fmtPrice(coutData.cout_food)} F</div>
+          </div>
+          <div className="h-2 bg-background rounded-full overflow-hidden">
+            <div className="h-full bg-[#34d399]" style={{ width: `${Math.min(coutData.food_cost_pct, 100)}%` }} />
+          </div>
+        </div>
+
+        {/* Beverage Cost Boisson */}
+        <div className="trinity-card bg-secondary/30" style={{ borderLeft: '3px solid #2dd4bf' }}>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-bold text-[#2dd4bf]">● BEVERAGE COST BOISSON</span>
+          </div>
+          <div className="text-3xl font-bold mb-1" style={{ fontFamily: "'DM Mono', monospace", color: '#2dd4bf' }}>
+            {coutData.beverage_cost_pct.toFixed(1)}%
+          </div>
+          <div className="text-xs text-muted-foreground mb-3 space-y-0.5">
+            <div>CA: {fmtPrice(coutData.ca_drink)} F</div>
+            <div>Coût: {fmtPrice(coutData.cout_drink)} F</div>
+          </div>
+          <div className="h-2 bg-background rounded-full overflow-hidden">
+            <div className="h-full bg-[#2dd4bf]" style={{ width: `${Math.min(coutData.beverage_cost_pct, 100)}%` }} />
+          </div>
+        </div>
+
+        {/* Coût Global Matière */}
+        <div className="trinity-card bg-secondary/30" style={{ borderLeft: '3px solid #34d399' }}>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-bold text-[#34d399]">● COÛT GLOBAL MATIÈRE</span>
+          </div>
+          <div className="text-3xl font-bold mb-1" style={{ fontFamily: "'DM Mono', monospace", color: '#34d399' }}>
+            {coutData.cout_global_pct.toFixed(1)}%
+          </div>
+          <div className="text-xs text-muted-foreground mb-3 space-y-0.5">
+            <div>CA: {fmtPrice(coutData.ca_total)} F</div>
+            <div>Coût: {fmtPrice(coutData.cout_total)} F</div>
+          </div>
+          <div className="h-2 bg-background rounded-full overflow-hidden">
+            <div className="h-full bg-[#34d399]" style={{ width: `${Math.min(coutData.cout_global_pct, 100)}%` }} />
+          </div>
+        </div>
+      </div>
+      
+      {coutData.couverture_pct < 100 && (
+        <div className="mt-3 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-xs text-yellow-200">
+          💡 Couverture: {coutData.couverture_pct.toFixed(0)}% des ventes ont une fiche technique. 
+          Créez plus de fiches pour un calcul précis.
+        </div>
+      )}
+    </div>
+  );
+};
+
+
 const Select = ({ label, value, onChange, options, placeholder = "Sélectionner...", className = "" }) => (
   <div className={`space-y-1 ${className}`}>
     {label && <label className="text-sm text-muted-foreground">{label}</label>}
