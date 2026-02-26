@@ -2641,58 +2641,312 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
           </div>
 
           {/* Ingrédients & Grammages */}
-          <div className="border border-border rounded-lg p-4">
-            <h4 className="font-medium mb-3">Ingrédients</h4>
+          <div className="trinity-card">
+            <h3 className="font-semibold mb-4">Ingrédients & Grammages</h3>
             
-            {form.ingredients.length > 0 && (
-              <div className="space-y-2 mb-4">
-                {form.ingredients.map((ing, idx) => (
-                  <div key={idx} className="flex items-center gap-2 text-sm bg-secondary/50 rounded p-2">
-                    <span className="flex-1">{ing.nom}</span>
-                    <span className="font-mono">{ing.quantite} {ing.unite}</span>
-                    <span className="font-mono text-muted-foreground">{fmtPrice(ing.cout_ligne)}</span>
-                    <button onClick={() => removeIngredient(idx)} className="text-destructive hover:bg-destructive/20 p-1 rounded">
-                      <X className="w-4 h-4" />
-                    </button>
+            {/* Onglets Produit achat / Sous-fiche */}
+            <div className="flex gap-2 border-b border-border mb-4">
+              <button
+                type="button"
+                onClick={() => setIngredientTab("achat")}
+                className={`px-4 py-2 text-sm font-medium transition ${
+                  ingredientTab === "achat"
+                    ? "border-b-2 border-primary text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                📦 Produit (base achats)
+              </button>
+              <button
+                type="button"
+                onClick={() => setIngredientTab("sous_fiche")}
+                className={`px-4 py-2 text-sm font-medium transition ${
+                  ingredientTab === "sous_fiche"
+                    ? "border-b-2 border-primary text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                📋 Sous-fiche technique
+              </button>
+            </div>
+
+            {/* Onglet : Produit (base achats) */}
+            {ingredientTab === "achat" && (
+              <div className="space-y-3">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={achatsSearch}
+                    onChange={(e) => {
+                      setAchatsSearch(e.target.value);
+                      searchAchats(e.target.value);
+                    }}
+                    placeholder="Rechercher un produit..."
+                    className="trinity-input"
+                    disabled={!form.restaurant_id}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {form.restaurant_id ? "Dernier prix d'achat par fournisseur - cliquez pour sélectionner" : "Sélectionnez d'abord un restaurant"}
+                  </p>
+                  
+                  {achatsResults.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {achatsResults.map((achat, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setNewIngredient({
+                              nom: achat.produit,
+                              quantite: "",
+                              unite: achat.unite || "kg",
+                              prix_unitaire: achat.prix_unitaire.toString(),
+                              type_ingredient: "achat",
+                              fournisseur: achat.fournisseur,
+                              date_achat: achat.date_achat
+                            });
+                            setAchatsSearch("");
+                            setAchatsResults([]);
+                          }}
+                          className="w-full px-4 py-2 text-left hover:bg-secondary transition"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">{achat.produit}</span>
+                            <span className="text-primary font-mono text-sm">{fmtPrice(achat.prix_unitaire)} F/{achat.unite}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {achat.fournisseur} • {achat.date_achat ? new Date(achat.date_achat).toLocaleDateString() : "—"}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {newIngredient.nom && newIngredient.type_ingredient === "achat" && (
+                  <div className="bg-secondary/30 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{newIngredient.nom}</span>
+                      <span className="text-xs text-muted-foreground">{newIngredient.fournisseur}</span>
+                    </div>
+                    
+                    <div className="grid grid-cols-12 gap-2">
+                      <div className="col-span-3">
+                        <label className="block text-xs text-muted-foreground mb-1">Cond.</label>
+                        <select
+                          value={newIngredient.unite}
+                          onChange={(e) => setNewIngredient({ ...newIngredient, unite: e.target.value })}
+                          className="trinity-input text-sm"
+                        >
+                          {unites.map(u => <option key={u} value={u}>{u}</option>)}
+                        </select>
+                      </div>
+                      <div className="col-span-3">
+                        <label className="block text-xs text-muted-foreground mb-1">Qté</label>
+                        <input
+                          type="text"
+                          value={newIngredient.quantite}
+                          onChange={(e) => setNewIngredient({ ...newIngredient, quantite: e.target.value })}
+                          placeholder="Ex: 80g"
+                          className="trinity-input text-sm"
+                        />
+                      </div>
+                      <div className="col-span-4">
+                        <label className="block text-xs text-muted-foreground mb-1">Coût portion (F)</label>
+                        <div className="trinity-input text-sm bg-secondary/50 cursor-not-allowed font-mono">
+                          {newIngredient.quantite && newIngredient.prix_unitaire 
+                            ? Math.round((convertToBaseUnit(parseFloat(newIngredient.quantite), newIngredient.unite) / 1000) * parseFloat(newIngredient.prix_unitaire))
+                            : "—"
+                          }
+                        </div>
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-xs text-muted-foreground mb-1">&nbsp;</label>
+                        <Button variant="primary" onClick={addIngredient} className="w-full">
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="text-xs text-muted-foreground">
+                      PU: {fmtPrice(newIngredient.prix_unitaire)} F/{newIngredient.unite}
+                    </div>
                   </div>
-                ))}
+                )}
               </div>
             )}
 
-            <div className="grid grid-cols-12 gap-2">
-              <input
-                type="text"
-                value={newIngredient.nom}
-                onChange={(e) => setNewIngredient({ ...newIngredient, nom: e.target.value })}
-                placeholder="Ingrédient"
-                className="trinity-input col-span-4"
-              />
-              <input
-                type="number"
-                value={newIngredient.quantite}
-                onChange={(e) => setNewIngredient({ ...newIngredient, quantite: e.target.value })}
-                placeholder="Qté"
-                className="trinity-input col-span-2"
-              />
-              <select
-                value={newIngredient.unite}
-                onChange={(e) => setNewIngredient({ ...newIngredient, unite: e.target.value })}
-                className="trinity-input col-span-2"
-              >
-                {unites.map(u => <option key={u} value={u}>{u}</option>)}
-              </select>
-              <input
-                type="number"
-                value={newIngredient.prix_unitaire}
-                onChange={(e) => setNewIngredient({ ...newIngredient, prix_unitaire: e.target.value })}
-                placeholder="PU XPF"
-                className="trinity-input col-span-2"
-                step="0.001"
-              />
-              <Button variant="secondary" onClick={addIngredient} className="col-span-2">
-                <Plus className="w-4 h-4" />
-              </Button>
-            </div>
+            {/* Onglet : Sous-fiche technique */}
+            {ingredientTab === "sous_fiche" && (
+              <div className="space-y-3">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={fichesSearch}
+                    onChange={(e) => {
+                      setFichesSearch(e.target.value);
+                      searchFiches(e.target.value);
+                    }}
+                    placeholder="Rechercher une fiche..."
+                    className="trinity-input"
+                    disabled={!form.restaurant_id}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {form.restaurant_id ? "Fiches existantes - le coût sera calculé au prorata du grammage demandé" : "Sélectionnez d'abord un restaurant"}
+                  </p>
+                  
+                  {fichesResults.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {fichesResults.map(fiche => (
+                        <button
+                          key={fiche.id}
+                          type="button"
+                          onClick={() => {
+                            setNewIngredient({
+                              nom: fiche.nom,
+                              quantite: "",
+                              unite: "g",
+                              prix_unitaire: "0",
+                              type_ingredient: "sous_fiche",
+                              fiche_id: fiche.id,
+                              fournisseur: null,
+                              date_achat: null
+                            });
+                            setFichesSearch("");
+                            setFichesResults([]);
+                          }}
+                          className="w-full px-4 py-2 text-left hover:bg-secondary transition"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">{fiche.nom}</span>
+                            <span className="text-primary font-mono text-sm">{fmtPrice(fiche.prix_vente)}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {getRestaurantById(fiche.restaurant_id)?.nom} • {fiche.famille} • {fiche.poids_total_g || 0}g • {fmtPct(fiche.food_cost_pct)}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {newIngredient.nom && newIngredient.type_ingredient === "sous_fiche" && (
+                  <div className="bg-secondary/30 rounded-lg p-4 space-y-3">
+                    <div className="font-medium">{newIngredient.nom}</div>
+                    
+                    <div className="grid grid-cols-12 gap-2">
+                      <div className="col-span-3">
+                        <label className="block text-xs text-muted-foreground mb-1">Cond.</label>
+                        <select
+                          value={newIngredient.unite}
+                          onChange={(e) => setNewIngredient({ ...newIngredient, unite: e.target.value })}
+                          className="trinity-input text-sm"
+                        >
+                          {unites.map(u => <option key={u} value={u}>{u}</option>)}
+                        </select>
+                      </div>
+                      <div className="col-span-3">
+                        <label className="block text-xs text-muted-foreground mb-1">Quantité</label>
+                        <input
+                          type="text"
+                          value={newIngredient.quantite}
+                          onChange={(e) => setNewIngredient({ ...newIngredient, quantite: e.target.value })}
+                          placeholder="Ex: 80g"
+                          className="trinity-input text-sm"
+                        />
+                      </div>
+                      <div className="col-span-4">
+                        <label className="block text-xs text-muted-foreground mb-1">Coût (F)</label>
+                        <div className="trinity-input text-sm bg-secondary/50 cursor-not-allowed font-mono">
+                          {(() => {
+                            if (!newIngredient.quantite || !newIngredient.fiche_id) return "—";
+                            const fiche = fiches.find(f => f.id === newIngredient.fiche_id);
+                            if (!fiche || !fiche.poids_total_g) return "—";
+                            const ratio = parseFloat(newIngredient.quantite) / fiche.poids_total_g;
+                            return Math.round(fiche.cout_total * ratio);
+                          })()}
+                        </div>
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-xs text-muted-foreground mb-1">&nbsp;</label>
+                        <Button variant="primary" onClick={addIngredient} className="w-full">
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tableau des ingrédients ajoutés */}
+            {form.ingredients.length > 0 ? (
+              <div className="mt-6">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-muted-foreground uppercase border-b border-border">
+                      <th className="text-left py-2">Ingrédient</th>
+                      <th className="text-right py-2">Cond.</th>
+                      <th className="text-right py-2">Quantité</th>
+                      <th className="text-right py-2">Coût (F)</th>
+                      <th className="text-right py-2">PU</th>
+                      <th className="w-10"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {form.ingredients.map((ing, idx) => (
+                      <tr key={idx} className="border-b border-border/50">
+                        <td className="py-2">
+                          <div className="flex items-center gap-2">
+                            {ing.type_ingredient === "sous_fiche" ? "📋" : "📦"}
+                            <span>{ing.nom}</span>
+                          </div>
+                          {ing.fournisseur && (
+                            <div className="text-xs text-muted-foreground">{ing.fournisseur}</div>
+                          )}
+                        </td>
+                        <td className="text-right font-mono">{ing.unite}</td>
+                        <td className="text-right font-mono">{ing.quantite}</td>
+                        <td className="text-right font-mono text-primary">{Math.round(ing.cout_ligne)}</td>
+                        <td className="text-right font-mono text-xs text-muted-foreground">
+                          {ing.prix_unitaire > 0 ? `${fmtPrice(ing.prix_unitaire)} F/${ing.unite}` : "—"}
+                        </td>
+                        <td className="text-right">
+                          <button 
+                            type="button"
+                            onClick={() => removeIngredient(idx)} 
+                            className="text-destructive hover:bg-destructive/20 p-1 rounded"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="font-bold text-primary">
+                      <td colSpan="2" className="py-3">TOTAL</td>
+                      <td className="text-right font-mono">{Math.round(costs.poidsTotal)}g</td>
+                      <td className="text-right font-mono">{fmtPrice(costs.coutTotal)}</td>
+                      <td colSpan="2"></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            ) : (
+              <div className="mt-6 text-center py-8 bg-secondary/30 rounded-lg">
+                <Package className="w-12 h-12 mx-auto mb-2 text-muted-foreground opacity-50" />
+                <p className="text-sm text-muted-foreground">Aucun ingrédient ajouté — utilisez le formulaire ci-dessus</p>
+              </div>
+            )}
+
+            {/* Poids total de la fiche */}
+            {form.ingredients.length > 0 && (
+              <div className="mt-4 flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Poids total de la fiche</span>
+                <span className="font-mono font-bold">{Math.round(costs.poidsTotal)} g</span>
+              </div>
+            )}
           </div>
 
           {/* Cost Preview */}
@@ -2714,9 +2968,8 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                   </div>
                 </div>
               </div>
-              <div className="mt-3">
-                <Gauge value={costs.foodCost} label="" />
-              </div>
+            </div>
+          )}
             </div>
           )}
 
