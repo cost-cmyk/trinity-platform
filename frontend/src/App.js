@@ -419,53 +419,134 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
               )}
             </div>
 
-            {/* TOP 10 DU JOUR */}
+            {/* === 3. PAR FAMILLE === */}
+            {restoDashboard.by_category?.length > 0 && (
+              <div className="trinity-card">
+                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-4">
+                  Par Famille
+                </div>
+                <div className="space-y-3">
+                  {restoDashboard.by_category.slice(0, 8).map((cat, idx) => {
+                    const colors = ['#818cf8', '#34d399', '#fbbf24', '#f87171', '#8b5cf6', '#2dd4bf', '#f97316', '#f472b6'];
+                    const color = colors[idx % colors.length];
+                    const pctCat = kpis.ca_total > 0 ? (cat.ca / kpis.ca_total * 100) : 0;
+                    
+                    return (
+                      <div key={idx}>
+                        <div className="flex justify-between items-center text-xs mb-1">
+                          <div className="flex items-center gap-2">
+                            <span style={{ color }}>{cat.categorie || 'Sans catégorie'}</span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] bg-secondary">
+                              {cat.is_food ? 'N' : 'B'}
+                            </span>
+                          </div>
+                          <span className="font-mono text-muted-foreground">
+                            {fmtPrice(cat.ca)} · {pctCat.toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-background rounded-full overflow-hidden">
+                          <div className="h-full transition-all" style={{ width: `${pctCat}%`, backgroundColor: color }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* === 4. MENU ENGINEERING (Titre séparateur) === */}
+            <div className="flex items-center gap-2 my-4">
+              <div className="h-0.5 w-8 rounded" style={{ backgroundColor: selectedRestaurant.couleur }} />
+              <span className="text-xs font-bold uppercase tracking-widest" style={{ color: selectedRestaurant.couleur }}>
+                Menu Engineering
+              </span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+
+            {/* === 5. COÛT THÉORIQUE - FICHE TECHNIQUE === */}
+            <CoutTheoriqueSection 
+              restaurantId={selectedRestaurant.id} 
+              date={selectedDate}
+              caFood={kpis.ca_food}
+              caDrink={kpis.ca_drink}
+            />
+
+            {/* === 6. TOP 10 === */}
             <div>
-              <h2 className="text-xl font-bold mb-4">
-                Top 10 du Jour 
+              <h2 className="text-lg font-bold mb-3">
+                Top 10 du Jour
                 <span className="text-sm font-normal text-muted-foreground ml-2">
                   ({selectedDate ? new Date(selectedDate).toLocaleDateString('fr-FR') : 'Toutes dates'})
                 </span>
               </h2>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Top 10 Nourriture du Jour */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Top 10 Global */}
                 <div className="trinity-card">
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="w-3 h-3 rounded-full bg-orange-500" />
-                    <h3 className="text-lg font-semibold">Nourriture</h3>
+                  <div className="text-xs font-bold uppercase tracking-wider text-blue-400 mb-3">
+                    📊 Top 10 du Jour - Global
                   </div>
-                  {restoDashboard.top_jour?.food?.length > 0 ? (
+                  {restoDashboard.top_jour?.food?.length > 0 || restoDashboard.top_jour?.drink?.length > 0 ? (
                     <div className="space-y-2">
-                      {restoDashboard.top_jour.food.map((item, idx) => (
-                        <div key={idx} className="flex items-center gap-3">
-                          <span className="w-5 text-xs font-mono text-muted-foreground">{idx + 1}</span>
-                          <span className="flex-1 text-sm truncate">{item.nom}</span>
-                          <span className="text-xs font-mono text-muted-foreground">{item.quantite}</span>
-                          <span className="text-xs font-mono">{fmtPrice(item.ca)}</span>
-                        </div>
-                      ))}
+                      {[...(restoDashboard.top_jour.food || []), ...(restoDashboard.top_jour.drink || [])]
+                        .sort((a, b) => b.ca - a.ca)
+                        .slice(0, 10)
+                        .map((item, idx) => {
+                          const maxCa = Math.max(...[...(restoDashboard.top_jour.food || []), ...(restoDashboard.top_jour.drink || [])].map(i => i.ca));
+                          const pct = (item.ca / maxCa * 100);
+                          
+                          return (
+                            <div key={idx}>
+                              <div className="flex justify-between items-center text-xs mb-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-5 text-muted-foreground font-mono">{idx + 1}</span>
+                                  <span className="truncate">{item.nom}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-muted-foreground">{item.quantite}</span>
+                                  <span className="font-mono font-bold text-blue-400">{fmtPrice(item.ca)}</span>
+                                </div>
+                              </div>
+                              <div className="h-1 bg-background rounded-full overflow-hidden">
+                                <div className="h-full bg-blue-500" style={{ width: `${pct}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">Aucune vente</p>
                   )}
                 </div>
 
-                {/* Top 10 Boissons du Jour */}
+                {/* Top 10 Nourriture */}
                 <div className="trinity-card">
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="w-3 h-3 rounded-full bg-cyan-500" />
-                    <h3 className="text-lg font-semibold">Boissons</h3>
+                  <div className="text-xs font-bold uppercase tracking-wider text-[#34d399] mb-3">
+                    🍽️ Top 10 du Jour - Nourritures
                   </div>
-                  {restoDashboard.top_jour?.drink?.length > 0 ? (
+                  {restoDashboard.top_jour?.food?.length > 0 ? (
                     <div className="space-y-2">
-                      {restoDashboard.top_jour.drink.map((item, idx) => (
-                        <div key={idx} className="flex items-center gap-3">
-                          <span className="w-5 text-xs font-mono text-muted-foreground">{idx + 1}</span>
-                          <span className="flex-1 text-sm truncate">{item.nom}</span>
-                          <span className="text-xs font-mono text-muted-foreground">{item.quantite}</span>
-                          <span className="text-xs font-mono">{fmtPrice(item.ca)}</span>
-                        </div>
-                      ))}
+                      {restoDashboard.top_jour.food.slice(0, 10).map((item, idx) => {
+                        const maxCa = Math.max(...restoDashboard.top_jour.food.map(i => i.ca));
+                        const pct = (item.ca / maxCa * 100);
+                        
+                        return (
+                          <div key={idx}>
+                            <div className="flex justify-between items-center text-xs mb-1">
+                              <div className="flex items-center gap-2">
+                                <span className="w-5 text-muted-foreground font-mono">{idx + 1}</span>
+                                <span className="truncate">{item.nom}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground">{item.quantite}</span>
+                                <span className="font-mono font-bold text-[#34d399]">{fmtPrice(item.ca)}</span>
+                              </div>
+                            </div>
+                            <div className="h-1 bg-background rounded-full overflow-hidden">
+                              <div className="h-full bg-[#34d399]" style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">Aucune vente</p>
@@ -474,53 +555,82 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
               </div>
             </div>
 
-            {/* TOP 10 DU MOIS */}
+            {/* Top 10 du Mois */}
             <div>
-              <h2 className="text-xl font-bold mb-4">
+              <h2 className="text-lg font-bold mb-3">
                 Top 10 Cumul du Mois
                 <span className="text-sm font-normal text-muted-foreground ml-2">
                   ({restoDashboard.mois_courant ? restoDashboard.mois_courant : 'Tout'})
                 </span>
               </h2>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Top 10 Nourriture du Mois */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Top 10 Global Mois */}
                 <div className="trinity-card">
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="w-3 h-3 rounded-full bg-orange-500" />
-                    <h3 className="text-lg font-semibold">Nourriture</h3>
+                  <div className="text-xs font-bold uppercase tracking-wider text-purple-400 mb-3">
+                    📊 Top 10 du Mois - Global
                   </div>
-                  {restoDashboard.top_mois?.food?.length > 0 ? (
+                  {restoDashboard.top_mois?.food?.length > 0 || restoDashboard.top_mois?.drink?.length > 0 ? (
                     <div className="space-y-2">
-                      {restoDashboard.top_mois.food.map((item, idx) => (
-                        <div key={idx} className="flex items-center gap-3">
-                          <span className="w-5 text-xs font-mono text-muted-foreground">{idx + 1}</span>
-                          <span className="flex-1 text-sm truncate">{item.nom}</span>
-                          <span className="text-xs font-mono text-muted-foreground">{item.quantite}</span>
-                          <span className="text-xs font-mono">{fmtPrice(item.ca)}</span>
-                        </div>
-                      ))}
+                      {[...(restoDashboard.top_mois.food || []), ...(restoDashboard.top_mois.drink || [])]
+                        .sort((a, b) => b.ca - a.ca)
+                        .slice(0, 10)
+                        .map((item, idx) => {
+                          const maxCa = Math.max(...[...(restoDashboard.top_mois.food || []), ...(restoDashboard.top_mois.drink || [])].map(i => i.ca));
+                          const pct = (item.ca / maxCa * 100);
+                          
+                          return (
+                            <div key={idx}>
+                              <div className="flex justify-between items-center text-xs mb-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-5 text-muted-foreground font-mono">{idx + 1}</span>
+                                  <span className="truncate">{item.nom}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-muted-foreground">{item.quantite}</span>
+                                  <span className="font-mono font-bold text-purple-400">{fmtPrice(item.ca)}</span>
+                                </div>
+                              </div>
+                              <div className="h-1 bg-background rounded-full overflow-hidden">
+                                <div className="h-full bg-purple-500" style={{ width: `${pct}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">Aucune vente</p>
                   )}
                 </div>
 
-                {/* Top 10 Boissons du Mois */}
+                {/* Top 10 Nourriture Mois */}
                 <div className="trinity-card">
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="w-3 h-3 rounded-full bg-cyan-500" />
-                    <h3 className="text-lg font-semibold">Boissons</h3>
+                  <div className="text-xs font-bold uppercase tracking-wider text-[#34d399] mb-3">
+                    🍽️ Top 10 du Mois - Nourritures
                   </div>
-                  {restoDashboard.top_mois?.drink?.length > 0 ? (
+                  {restoDashboard.top_mois?.food?.length > 0 ? (
                     <div className="space-y-2">
-                      {restoDashboard.top_mois.drink.map((item, idx) => (
-                        <div key={idx} className="flex items-center gap-3">
-                          <span className="w-5 text-xs font-mono text-muted-foreground">{idx + 1}</span>
-                          <span className="flex-1 text-sm truncate">{item.nom}</span>
-                          <span className="text-xs font-mono text-muted-foreground">{item.quantite}</span>
-                          <span className="text-xs font-mono">{fmtPrice(item.ca)}</span>
-                        </div>
-                      ))}
+                      {restoDashboard.top_mois.food.slice(0, 10).map((item, idx) => {
+                        const maxCa = Math.max(...restoDashboard.top_mois.food.map(i => i.ca));
+                        const pct = (item.ca / maxCa * 100);
+                        
+                        return (
+                          <div key={idx}>
+                            <div className="flex justify-between items-center text-xs mb-1">
+                              <div className="flex items-center gap-2">
+                                <span className="w-5 text-muted-foreground font-mono">{idx + 1}</span>
+                                <span className="truncate">{item.nom}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground">{item.quantite}</span>
+                                <span className="font-mono font-bold text-[#34d399]">{fmtPrice(item.ca)}</span>
+                              </div>
+                            </div>
+                            <div className="h-1 bg-background rounded-full overflow-hidden">
+                              <div className="h-full bg-[#34d399]" style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">Aucune vente</p>
@@ -528,14 +638,6 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
                 </div>
               </div>
             </div>
-
-            {/* Food Cost Gauge */}
-            {kpis.avg_food_cost > 0 && (
-              <div className="trinity-card max-w-md">
-                <h3 className="text-sm font-medium mb-3">Food Cost Moyen</h3>
-                <Gauge value={kpis.avg_food_cost} label="Food Cost %" />
-              </div>
-            )}
           </>
         )}
       </div>
