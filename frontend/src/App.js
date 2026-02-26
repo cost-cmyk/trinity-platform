@@ -2047,7 +2047,9 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
     prix_unitaire: "",
     type_ingredient: "achat",
     fournisseur: null,
-    date_achat: null
+    date_achat: null,
+    quantite_base_achat: 1,
+    unite_achat_originale: null
   });
 
   const unites = ["g", "kg", "L", "ml", "cl", "unité", "pièce"];
