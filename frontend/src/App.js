@@ -2191,7 +2191,17 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
       linked_produit_ids: [],
       photo_url: null
     });
-    setNewIngredient({ nom: "", quantite: "", unite: "g", prix_unitaire: "", type_ingredient: "achat", fournisseur: null, date_achat: null });
+    setNewIngredient({ 
+      nom: "", 
+      quantite: "", 
+      unite: "g", 
+      prix_unitaire: "", 
+      type_ingredient: "achat", 
+      fournisseur: null, 
+      date_achat: null,
+      quantite_base_achat: 1,
+      unite_achat_originale: null
+    });
     setEditingId(null);
     setShowForm(false);
     setIngredientTab("achat");
