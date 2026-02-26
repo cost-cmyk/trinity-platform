@@ -2106,8 +2106,8 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
     return quantite * (conversions[unite] || 1);
   };
 
-  // Recherche d'achats pour autocomplétion (avec debounce)
-  const searchAchatsImmediate = async (query) => {
+  // Recherche d'achats pour autocomplétion
+  const searchAchats = async (query) => {
     if (!query || query.length < 2 || !form.restaurant_id) {
       setAchatsResults([]);
       return;
@@ -2115,7 +2115,7 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
     try {
       const response = await axios.get(`${API}/achats?restaurant_id=${form.restaurant_id}`);
       const filtered = response.data
-        .filter(a => a.produit.toLowerCase().includes(query.toLowerCase()))
+        .filter(a => a.produit && a.produit.toLowerCase().includes(query.toLowerCase()))
         .reduce((acc, achat) => {
           // Grouper par produit et garder le dernier achat
           const existing = acc.find(item => item.produit === achat.produit && item.fournisseur === achat.fournisseur);
@@ -2128,14 +2128,9 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
       setAchatsResults(filtered);
     } catch (err) {
       console.error("Erreur recherche achats:", err);
+      setAchatsResults([]);
     }
   };
-
-  // Version avec debounce pour éviter trop d'appels
-  const searchAchats = useCallback(
-    debounce((query) => searchAchatsImmediate(query), 300),
-    [form.restaurant_id]
-  );
 
   // Recherche de sous-fiches pour autocomplétion
   const searchFiches = async (query) => {
