@@ -1934,6 +1934,9 @@ async def startup_db_client():
         collections = await db.list_collection_names()
         logger.info(f"Connected to database '{db_name}' with {len(collections)} collections")
         
+        # Exécuter la migration des restaurants
+        await migrate_restaurants()
+        
     except Exception as e:
         logger.error(f"❌ MongoDB connection failed: {e}")
         logger.error("Application will continue but database operations may fail")
