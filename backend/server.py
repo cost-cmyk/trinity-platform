@@ -162,12 +162,16 @@ class IngredientFiche(BaseModel):
 class FicheTechniqueBase(BaseModel):
     nom: str
     restaurant_id: str
-    type_fiche: str = "standard"  # standard, preparation
+    type_fiche: str = "produit_fini"  # produit_fini, preparation_base
     famille: str = ""
+    is_food: bool = True  # True=Nourriture, False=Boisson
     nb_portions: int = 1
     prix_vente: float = 0
     ingredients: List[IngredientFiche] = []
     statut: str = "brouillon"  # brouillon, fait
+    linked_produit_ids: List[str] = []  # Produits de la carte rattachés
+    photo_url: Optional[str] = None  # URL de la photo du plat
+    poids_total_g: float = 0  # Poids total en grammes
 
 class FicheTechniqueCreate(FicheTechniqueBase):
     pass
@@ -177,7 +181,6 @@ class FicheTechnique(FicheTechniqueBase):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     cout_total: float = 0
     food_cost_pct: float = 0
-    linked_produit_id: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 class VenteBase(BaseModel):
