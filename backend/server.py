@@ -362,6 +362,231 @@ def detect_date_from_filename(filename: str) -> Optional[str]:
         return f"{year}-{month}-{day}"
     return None
 
+# ====================== PARSERS IMPORT CARTES & ACHATS ======================
+
+def parse_carte_xlsx(file_content: bytes, filename: str) -> dict:
+    """Parse un fichier .xlsx de carte restaurant et extrait les produits par restaurant"""
+    result = {"restaurants": [], "produits": []}
+    
+    try:
+        workbook = openpyxl.load_workbook(io.BytesIO(file_content), data_only=True)
+        
+        # Traiter chaque feuille (sauf "TOUTES LES CARTES")
+        for sheet_name in workbook.sheetnames:
+            if sheet_name == "TOUTES LES CARTES":
+                continue
+            
+            sheet = workbook[sheet_name]
+            rows = list(sheet.iter_rows(values_only=True))
+            
+            if not rows or len(rows) < 3:
+                continue
+            
+            # Le nom du restaurant est dans le nom de la feuille
+            restaurant_nom = sheet_name.strip()
+            
+            # Ajouter le restaurant
+            result["restaurants"].append({
+                "nom": restaurant_nom,
+                "code": restaurant_nom.upper()[:3],
+                "type": "RESTAURANT",
+                "couleur": "#f97316",  # Orange par défaut
+                "jours_fermeture": [],
+                "actif": True
+            })
+            
+            # Trouver la ligne d'en-tête (ligne 2 après skiprows=2 dans pandas)
+            # Format attendu: #, Nom du produit, Catégorie, Prix vente TTC (XPF), Type, Fiche technique, Actif, Description
+            header_row = None
+            for idx, row in enumerate(rows):
+                if row and any(cell for cell in row if cell and 'Nom du produit' in str(cell)):
+                    header_row = idx
+                    break
+            
+            if header_row is None:
+                continue
+            
+            # Parser les produits
+            current_category = None
+            for row in rows[header_row + 1:]:
+                if not row or len(row) < 2:
+                    continue
+                
+                # row[0] = # ou Catégorie
+                # row[1] = Nom du produit
+                # row[2] = Catégorie
+                # row[3] = Prix
+                # row[4] = Type
+                # row[5] = Fiche technique
+                # row[6] = Actif
+                # row[7] = Description
+                
+                cell_0 = str(row[0]).strip() if row[0] else ""
+                cell_1 = str(row[1]).strip() if len(row) > 1 and row[1] else ""
+                
+                # Si cell_1 est vide, c'est une ligne de catégorie
+                if not cell_1 or cell_1 == "nan":
+                    # cell_0 contient la catégorie
+                    if cell_0 and cell_0 != "#" and cell_0 != "nan" and not cell_0.isdigit():
+                        current_category = cell_0
+                    continue
+                
+                # Extraire les données du produit
+                try:
+                    nom_produit = cell_1
+                    categorie = str(row[2]).strip() if len(row) > 2 and row[2] and str(row[2]).strip() != "nan" else current_category or ""
+                    
+                    # Prix
+                    prix_vente = 0
+                    if len(row) > 3 and row[3]:
+                        try:
+                            prix_vente = float(row[3])
+                        except:
+                            prix_vente = 0
+                    
+                    # Type (Nourriture/Boisson)
+                    type_produit = str(row[4]).strip().lower() if len(row) > 4 and row[4] else "nourriture"
+                    is_food = "nourriture" in type_produit or type_produit == "nourr"
+                    
+                    # Fiche technique
+                    fiche_technique = str(row[5]).strip().lower() if len(row) > 5 and row[5] else "non"
+                    has_fiche = fiche_technique == "oui"
+                    
+                    # Actif
+                    actif = str(row[6]).strip().lower() if len(row) > 6 and row[6] else "oui"
+                    is_actif = actif == "oui"
+                    
+                    # Description
+                    description = str(row[7]).strip() if len(row) > 7 and row[7] and str(row[7]).strip() != "nan" else ""
+                    
+                    result["produits"].append({
+                        "restaurant_nom": restaurant_nom,
+                        "nom": nom_produit,
+                        "categorie": categorie,
+                        "prix_vente": prix_vente,
+                        "is_food": is_food,
+                        "description": description,
+                        "actif": is_actif
+                    })
+                    
+                except Exception as e:
+                    logging.warning(f"Erreur parsing produit: {e}")
+                    continue
+        
+        logging.info(f"Carte parsed: {len(result['restaurants'])} restaurants, {len(result['produits'])} produits")
+        return result
+        
+    except Exception as e:
+        logging.error(f"Erreur parsing carte XLSX: {e}")
+        raise HTTPException(status_code=400, detail=f"Erreur de lecture du fichier carte: {str(e)}")
+
+def parse_achats_xlsx(file_content: bytes, filename: str) -> List[dict]:
+    """Parse un fichier .xlsx d'achats Odoo et extrait les lignes d'achat"""
+    achats = []
+    
+    try:
+        workbook = openpyxl.load_workbook(io.BytesIO(file_content), data_only=True)
+        sheet = workbook.active
+        rows = list(sheet.iter_rows(values_only=True))
+        
+        if not rows or len(rows) < 2:
+            return achats
+        
+        # En-tête attendu: Référence de la commande, Partenaire, Produit, Prix unitaire, Quantité, Unité de mesure, Sous-total, Taxes, Total, Arrivée prévue
+        header_row = rows[0]
+        
+        # Mapper les colonnes
+        col_mapping = {}
+        for idx, cell in enumerate(header_row):
+            if cell:
+                cell_lower = str(cell).lower().strip()
+                if 'référence' in cell_lower or 'reference' in cell_lower:
+                    col_mapping['reference'] = idx
+                elif 'partenaire' in cell_lower or 'fournisseur' in cell_lower:
+                    col_mapping['partenaire'] = idx
+                elif 'produit' in cell_lower:
+                    col_mapping['produit'] = idx
+                elif 'prix unitaire' in cell_lower:
+                    col_mapping['prix_unitaire'] = idx
+                elif 'quantité' in cell_lower or 'quantite' in cell_lower:
+                    col_mapping['quantite'] = idx
+                elif 'unité' in cell_lower or 'unite' in cell_lower:
+                    col_mapping['unite'] = idx
+                elif 'total' in cell_lower and 'sous' not in cell_lower:
+                    col_mapping['total'] = idx
+                elif 'arrivée' in cell_lower or 'arrivee' in cell_lower or 'date' in cell_lower:
+                    col_mapping['date'] = idx
+        
+        # Parser les lignes de données
+        current_produit = None
+        for row in rows[1:]:
+            if not row or len(row) < 3:
+                continue
+            
+            # Dans Odoo, les produits sont groupés: 
+            # - Première ligne contient le nom du produit dans colonne Référence
+            # - Lignes suivantes contiennent les détails
+            
+            reference = str(row[col_mapping.get('reference', 0)]).strip() if col_mapping.get('reference') is not None else ""
+            partenaire = str(row[col_mapping.get('partenaire', 1)]).strip() if col_mapping.get('partenaire') is not None else ""
+            produit = str(row[col_mapping.get('produit', 2)]).strip() if col_mapping.get('produit') is not None else ""
+            
+            # Si partenaire est vide ou "nan", c'est une ligne de header de produit
+            if not partenaire or partenaire == "nan" or partenaire == "None":
+                # C'est un header de produit - le nom du produit est dans reference
+                if reference and reference != "nan":
+                    current_produit = reference.split("(")[0].strip()  # Retirer les infos entre parenthèses
+                continue
+            
+            # C'est une ligne de détail d'achat
+            if not current_produit:
+                current_produit = produit if produit and produit != "nan" else "Produit inconnu"
+            
+            try:
+                prix_unitaire = float(row[col_mapping.get('prix_unitaire', 3)]) if col_mapping.get('prix_unitaire') is not None and row[col_mapping.get('prix_unitaire')] else 0
+                quantite = float(row[col_mapping.get('quantite', 4)]) if col_mapping.get('quantite') is not None and row[col_mapping.get('quantite')] else 0
+                unite = str(row[col_mapping.get('unite', 5)]).strip() if col_mapping.get('unite') is not None and row[col_mapping.get('unite')] else "UNITE"
+                total = float(row[col_mapping.get('total', 8)]) if col_mapping.get('total') is not None and row[col_mapping.get('total')] else 0
+                
+                # Date
+                date_achat = None
+                if col_mapping.get('date') is not None and row[col_mapping.get('date')]:
+                    date_val = row[col_mapping.get('date')]
+                    if date_val and str(date_val) != "NaT":
+                        try:
+                            if isinstance(date_val, datetime):
+                                date_achat = date_val.strftime("%Y-%m-%d")
+                            else:
+                                date_achat = str(date_val).split()[0]
+                        except:
+                            pass
+                
+                if not date_achat:
+                    date_achat = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                
+                achats.append({
+                    "reference_commande": reference,
+                    "fournisseur": partenaire,
+                    "produit": current_produit,
+                    "prix_unitaire": prix_unitaire,
+                    "quantite": quantite,
+                    "unite": unite,
+                    "total": total,
+                    "date_achat": date_achat
+                })
+                
+            except Exception as e:
+                logging.warning(f"Erreur parsing ligne achat: {e}")
+                continue
+        
+        logging.info(f"Achats parsed: {len(achats)} lignes")
+        return achats
+        
+    except Exception as e:
+        logging.error(f"Erreur parsing achats XLSX: {e}")
+        raise HTTPException(status_code=400, detail=f"Erreur de lecture du fichier achats: {str(e)}")
+
+
 def parse_xls_file(file_content: bytes, filename: str) -> List[dict]:
     """Parse un fichier .xls (Excel 97-2003) et extrait les ventes"""
     ventes = []
