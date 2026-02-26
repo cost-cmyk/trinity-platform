@@ -1829,9 +1829,8 @@ const ProduitsAchatsModule = ({ restaurants }) => {
               </thead>
               <tbody>
                 {produitsFiltres.map((p, idx) => (
-                  <>
+                  <React.Fragment key={idx}>
                     <tr 
-                      key={idx}
                       className="border-b border-border/50 hover:bg-accent/30 cursor-pointer transition"
                       onClick={() => setExpandedProduct(expandedProduct === idx ? null : idx)}
                     >
