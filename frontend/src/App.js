@@ -318,25 +318,21 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
     const pctDrink = kpis.ca_total > 0 ? (kpis.ca_drink / kpis.ca_total * 100) : 0;
     
     return (
-      <div className="space-y-6" data-testid="restaurant-dashboard">
+      <div className="space-y-4" data-testid="restaurant-dashboard">
         {/* Header avec retour */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
             <button 
               onClick={() => handleSelectRestaurant(null)}
-              className="p-2 hover:bg-accent rounded-lg"
+              className="p-2 hover:bg-accent rounded-lg transition"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-3">
-              <div 
-                className="w-4 h-4 rounded-full" 
-                style={{ backgroundColor: selectedRestaurant.couleur }}
-              />
-              <div>
-                <h1 className="text-2xl font-bold">{selectedRestaurant.nom}</h1>
-                <p className="text-sm text-muted-foreground">{selectedRestaurant.type}</p>
-              </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">{selectedRestaurant.type === 'PRODUCTION' ? '🏭' : '🍽️'}</span>
+              <h1 className="text-2xl font-bold" style={{ color: selectedRestaurant.couleur }}>
+                {selectedRestaurant.nom}
+              </h1>
             </div>
           </div>
           
