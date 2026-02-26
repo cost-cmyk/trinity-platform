@@ -3094,6 +3094,8 @@ const ImportModule = ({ restaurants, onRefresh }) => {
           </div>
         </>
       )}
+        </>
+      )}
 
       {/* Tab CARTE */}
       {activeTab === "carte" && (
