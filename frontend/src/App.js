@@ -1511,7 +1511,11 @@ const ImportModule = ({ restaurants, onRefresh }) => {
   const activeLignes = preview ? preview.lignes.filter(l => !excluded[l.idx]) : [];
   const activeCA = activeLignes.reduce((sum, l) => sum + l.ca_ttc, 0);
   const activeQty = activeLignes.reduce((sum, l) => sum + l.quantite, 0);
+  const activeRemise = activeLignes.reduce((sum, l) => sum + l.remise, 0);
   const excludedCount = preview ? Object.values(excluded).filter(Boolean).length : 0;
+  
+  // Lignes avec remises négatives (pour affichage détail)
+  const lignesRemiseNegative = preview ? preview.lignes.filter(l => l.is_remise_negative) : [];
 
   const pendingCount = files.filter(f => f.status === "pending").length;
   const successCount = files.filter(f => f.status === "success").length;
@@ -1537,22 +1541,33 @@ const ImportModule = ({ restaurants, onRefresh }) => {
         </div>
 
         {/* KPIs */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
           <KPICard label="Lignes totales" value={preview.nb_lignes} icon={FileSpreadsheet} />
           <KPICard label="Lignes actives" value={activeLignes.length} color="text-emerald-400" />
           <KPICard label="Exclues" value={excludedCount} color="text-amber-400" />
           <KPICard label="CA Total" value={fmtK(activeCA)} suffix="F" icon={TrendingUp} />
+          <KPICard label="Total Remises" value={fmtK(activeRemise)} suffix="F" color="text-purple-400" />
           <KPICard label="Nourriture" value={preview.nb_food} color="text-orange-400" />
           <KPICard label="Boissons" value={preview.nb_drink} color="text-cyan-400" />
         </div>
 
-        {/* Alertes */}
-        {preview.nb_remises_negatives > 0 && (
-          <div className="trinity-card bg-amber-500/10 border-amber-500/50 flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0" />
-            <div>
-              <span className="font-medium text-amber-400">{preview.nb_remises_negatives} remise(s) négative(s) détectée(s)</span>
-              <span className="text-sm text-muted-foreground ml-2">(bug PSW - auto-exclues)</span>
+        {/* Alertes remises négatives avec détail */}
+        {lignesRemiseNegative.length > 0 && (
+          <div className="trinity-card bg-amber-500/10 border-amber-500/50">
+            <div className="flex items-center gap-3 mb-3">
+              <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0" />
+              <div>
+                <span className="font-medium text-amber-400">{lignesRemiseNegative.length} remise(s) négative(s) détectée(s)</span>
+                <span className="text-sm text-muted-foreground ml-2">(bug PSW - remises mises à 0, lignes conservées)</span>
+              </div>
+            </div>
+            <div className="text-sm space-y-1 pl-8">
+              {lignesRemiseNegative.map((l, idx) => (
+                <div key={idx} className="flex justify-between text-muted-foreground">
+                  <span>{l.produit_nom}</span>
+                  <span className="font-mono text-amber-400">Remise ignorée</span>
+                </div>
+              ))}
             </div>
           </div>
         )}
