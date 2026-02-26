@@ -2157,7 +2157,7 @@ function App() {
   const renderModule = () => {
     switch (activeModule) {
       case "dashboard":
-        return <Dashboard stats={stats} restaurantStats={restaurantStats} loading={loading} />;
+        return <Dashboard stats={stats} restaurantStats={restaurantStats} loading={loading} restaurants={restaurants} />;
       case "restaurants":
         return <RestaurantsModule restaurants={restaurants} onRefresh={fetchData} />;
       case "carte":
@@ -2167,7 +2167,7 @@ function App() {
       case "import":
         return <ImportModule restaurants={restaurants} onRefresh={fetchData} />;
       default:
-        return <Dashboard stats={stats} restaurantStats={restaurantStats} loading={loading} />;
+        return <Dashboard stats={stats} restaurantStats={restaurantStats} loading={loading} restaurants={restaurants} />;
     }
   };
 
