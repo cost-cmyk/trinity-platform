@@ -2456,45 +2456,108 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
         isOpen={showForm} 
         onClose={resetForm} 
         title={editingId ? "Modifier la fiche" : "Nouvelle fiche technique"}
+        size="xl"
       >
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Nom de la fiche *"
-              value={form.nom}
-              onChange={(v) => setForm({ ...form, nom: v })}
-              placeholder="Ex: Burger Classic"
-              className="col-span-2"
-              data-testid="fiche-name-input"
-            />
-            <Select
-              label="Restaurant *"
-              value={form.restaurant_id}
-              onChange={(v) => setForm({ ...form, restaurant_id: v })}
-              options={restaurants.map(r => ({ value: r.id, label: r.nom }))}
-              placeholder="Sélectionner"
-            />
-            <Select
-              label="Famille"
-              value={form.famille}
-              onChange={(v) => setForm({ ...form, famille: v })}
-              options={familles}
-              placeholder="Sélectionner"
-            />
-            <Input
-              label="Prix de vente (XPF)"
-              type="number"
-              value={form.prix_vente}
-              onChange={(v) => setForm({ ...form, prix_vente: v })}
-              placeholder="Ex: 12.50"
-            />
-            <Input
-              label="Nb portions"
-              type="number"
-              value={form.nb_portions}
-              onChange={(v) => setForm({ ...form, nb_portions: v })}
-              placeholder="1"
-            />
+        <div className="space-y-6">
+          {/* Onglets Type de Fiche */}
+          <div className="flex gap-2 border-b border-border">
+            <button
+              onClick={() => setForm({ ...form, type_fiche: "produit_fini" })}
+              className={`px-4 py-2 font-medium transition ${
+                form.type_fiche === "produit_fini"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              🍽️ Produit fini
+            </button>
+            <button
+              onClick={() => setForm({ ...form, type_fiche: "preparation_base" })}
+              className={`px-4 py-2 font-medium transition ${
+                form.type_fiche === "preparation_base"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              🥖 Préparation de base
+            </button>
+          </div>
+
+          {/* Informations Générales */}
+          <div className="trinity-card">
+            <h3 className="font-semibold mb-4">Informations générales</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <Select
+                label="Restaurant *"
+                value={form.restaurant_id}
+                onChange={(v) => setForm({ ...form, restaurant_id: v })}
+                options={restaurants.map(r => ({ value: r.id, label: r.nom }))}
+                placeholder="Sélectionner"
+              />
+              <Input
+                label="Nom du plat/boisson *"
+                value={form.nom}
+                onChange={(v) => setForm({ ...form, nom: v })}
+                placeholder="Ex: Burger Classic"
+                data-testid="fiche-name-input"
+              />
+              <Input
+                label="Prix de vente TTC (F)"
+                type="number"
+                value={form.prix_vente}
+                onChange={(v) => setForm({ ...form, prix_vente: v })}
+                placeholder="0"
+              />
+              
+              {/* Toggle Nourriture/Boisson */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Type</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, is_food: true })}
+                    className={`flex-1 px-4 py-2 rounded-lg border transition ${
+                      form.is_food
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-secondary border-border hover:bg-secondary/80"
+                    }`}
+                  >
+                    🍽️ Nourriture
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, is_food: false })}
+                    className={`flex-1 px-4 py-2 rounded-lg border transition ${
+                      !form.is_food
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-secondary border-border hover:bg-secondary/80"
+                    }`}
+                  >
+                    🍷 Boisson
+                  </button>
+                </div>
+              </div>
+
+              <Select
+                label="Famille"
+                value={form.famille}
+                onChange={(v) => setForm({ ...form, famille: v })}
+                options={familles}
+                placeholder={form.restaurant_id ? "Sélectionner" : "Sélectionnez d'abord un restaurant"}
+                disabled={!form.restaurant_id}
+              />
+              
+              {/* Food cost calculé (lecture seule) */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Food cost calculé</label>
+                <div className="trinity-input bg-secondary/50 cursor-not-allowed">
+                  <span className="text-muted-foreground">
+                    {calculateCosts().coutPortion > 0 ? `${fmtPrice(calculateCosts().coutPortion)} • ` : ""}
+                    {calculateCosts().foodCost > 0 ? fmtPct(calculateCosts().foodCost) : "—"}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Ingredients */}
