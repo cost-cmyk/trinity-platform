@@ -3303,6 +3303,8 @@ function App() {
         return <CarteModule restaurants={restaurants} produits={produits} onRefresh={fetchData} />;
       case "fiches":
         return <FichesModule restaurants={restaurants} fiches={fiches} produits={produits} onRefresh={fetchData} />;
+      case "achats":
+        return <ProduitsAchatsModule restaurants={restaurants} />;
       case "import":
         return <ImportModule restaurants={restaurants} onRefresh={fetchData} />;
       default:
