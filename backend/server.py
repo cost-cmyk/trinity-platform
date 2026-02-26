@@ -1830,7 +1830,23 @@ async def root():
 
 @api_router.get("/health")
 async def health():
-    return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
+    """Health check endpoint with MongoDB status"""
+    health_status = {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "database": "unknown"
+    }
+    
+    try:
+        # Try to ping MongoDB
+        await client.admin.command('ping')
+        health_status["database"] = "connected"
+    except Exception as e:
+        logger.warning(f"Health check: MongoDB ping failed - {e}")
+        health_status["database"] = "disconnected"
+        health_status["status"] = "degraded"
+    
+    return health_status
 
 # Include router and middleware
 app.include_router(api_router)
