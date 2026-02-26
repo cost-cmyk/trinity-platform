@@ -618,9 +618,11 @@ def parse_xlsx_file(file_content: bytes, filename: str) -> List[dict]:
                 
                 # NE PAS exclure les CA TTC négatifs - ils sont conservés
                 
-                # Remise négative = bug PSW, on la met à 0 mais on garde la ligne
-                remise_negative = remise < 0
-                if remise_negative:
+                # Remise négative = bug PSW SEULEMENT si CA TTC >= 0
+                # Si CA TTC est négatif, on garde la remise négative aussi
+                remise_negative = False
+                if remise < 0 and ca_ttc >= 0:
+                    remise_negative = True
                     remise = 0
                 
                 # Déterminer si c'est nourriture ou boisson
