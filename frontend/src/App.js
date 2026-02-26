@@ -2051,6 +2051,74 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
   const unites = ["g", "kg", "L", "ml", "cl", "unité", "pièce"];
   const familles = ["Entrées", "Plats", "Desserts", "Boissons", "Préparations de base", "Sauces"];
 
+  // Fonction de conversion d'unités vers grammes/ml
+  const convertToBaseUnit = (quantite, unite) => {
+    const conversions = {
+      'kg': 1000, 'g': 1,
+      'L': 1000, 'ml': 1, 'cl': 10,
+      'unité': 1, 'pièce': 1
+    };
+    return quantite * (conversions[unite] || 1);
+  };
+
+  // Recherche d'achats pour autocomplétion
+  const searchAchats = async (query) => {
+    if (!query || query.length < 2 || !form.restaurant_id) {
+      setAchatsResults([]);
+      return;
+    }
+    try {
+      const response = await axios.get(`${API}/achats?restaurant_id=${form.restaurant_id}`);
+      const filtered = response.data
+        .filter(a => a.produit.toLowerCase().includes(query.toLowerCase()))
+        .reduce((acc, achat) => {
+          // Grouper par produit et garder le dernier achat
+          const existing = acc.find(item => item.produit === achat.produit && item.fournisseur === achat.fournisseur);
+          if (!existing || new Date(achat.date_achat) > new Date(existing.date_achat)) {
+            return [...acc.filter(item => !(item.produit === achat.produit && item.fournisseur === achat.fournisseur)), achat];
+          }
+          return acc;
+        }, [])
+        .slice(0, 10);
+      setAchatsResults(filtered);
+    } catch (err) {
+      console.error("Erreur recherche achats:", err);
+    }
+  };
+
+  // Recherche de sous-fiches pour autocomplétion
+  const searchFiches = async (query) => {
+    if (!query || query.length < 2 || !form.restaurant_id) {
+      setFichesResults([]);
+      return;
+    }
+    const filtered = fiches
+      .filter(f => 
+        f.restaurant_id === form.restaurant_id &&
+        f.statut === "fait" &&
+        f.id !== editingId &&
+        f.nom.toLowerCase().includes(query.toLowerCase())
+      )
+      .slice(0, 10);
+    setFichesResults(filtered);
+  };
+
+  // Recherche de produits carte pour rattachement
+  const searchProduits = async (query) => {
+    if (!query || query.length < 2 || !form.restaurant_id) {
+      setProduitsResults([]);
+      return;
+    }
+    const filtered = produits
+      .filter(p => 
+        p.restaurant_id === form.restaurant_id &&
+        p.nom.toLowerCase().includes(query.toLowerCase()) &&
+        !form.linked_produit_ids.includes(p.id)
+      )
+      .slice(0, 10);
+    setProduitsResults(filtered);
+  };
+
   const filteredFiches = fiches.filter((f) => {
     if (search && !f.nom.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterRestaurant && f.restaurant_id !== filterRestaurant) return false;
