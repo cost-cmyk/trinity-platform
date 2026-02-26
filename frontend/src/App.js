@@ -2053,6 +2053,15 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
   const unites = ["g", "kg", "L", "ml", "cl", "unité", "pièce"];
   const familles = ["Entrées", "Plats", "Desserts", "Boissons", "Préparations de base", "Sauces"];
 
+  // Fonction de debounce pour optimiser les recherches
+  const debounce = (func, delay) => {
+    let timeoutId;
+    return (...args) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => func(...args), delay);
+    };
+  };
+
   // Fonction de conversion d'unités vers grammes/ml
   const convertToBaseUnit = (quantite, unite) => {
     const conversions = {
