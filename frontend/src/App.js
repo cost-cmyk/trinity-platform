@@ -2171,18 +2171,51 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
   };
 
   const addIngredient = () => {
-    if (!newIngredient.nom || !newIngredient.quantite || !newIngredient.prix_unitaire) {
-      toast.error("Veuillez remplir tous les champs de l'ingrédient");
+    if (!newIngredient.nom || !newIngredient.quantite) {
+      toast.error("Veuillez remplir tous les champs requis");
       return;
     }
+    
+    // Calculer le coût_ligne selon le type
+    let cout_ligne = 0;
+    if (newIngredient.type_ingredient === "achat") {
+      if (!newIngredient.prix_unitaire) {
+        toast.error("Prix unitaire requis pour un produit acheté");
+        return;
+      }
+      // Conversion et calcul du coût
+      const qteBase = convertToBaseUnit(parseFloat(newIngredient.quantite), newIngredient.unite);
+      cout_ligne = (qteBase / 1000) * parseFloat(newIngredient.prix_unitaire); // PU est par kg ou L
+    } else {
+      // Pour une sous-fiche, le cout_ligne est calculé au prorata
+      const fiche = fiches.find(f => f.id === newIngredient.fiche_id);
+      if (fiche && fiche.poids_total_g > 0) {
+        const ratio = parseFloat(newIngredient.quantite) / fiche.poids_total_g;
+        cout_ligne = fiche.cout_total * ratio;
+      }
+    }
+    
     const ing = {
       ...newIngredient,
       quantite: parseFloat(newIngredient.quantite),
-      prix_unitaire: parseFloat(newIngredient.prix_unitaire),
-      cout_ligne: parseFloat(newIngredient.quantite) * parseFloat(newIngredient.prix_unitaire)
+      prix_unitaire: parseFloat(newIngredient.prix_unitaire) || 0,
+      cout_ligne
     };
+    
     setForm({ ...form, ingredients: [...form.ingredients, ing] });
-    setNewIngredient({ nom: "", quantite: "", unite: "g", prix_unitaire: "" });
+    setNewIngredient({ 
+      nom: "", 
+      quantite: "", 
+      unite: "g", 
+      prix_unitaire: "", 
+      type_ingredient: ingredientTab, 
+      fournisseur: null, 
+      date_achat: null 
+    });
+    setAchatsSearch("");
+    setFichesSearch("");
+    setAchatsResults([]);
+    setFichesResults([]);
   };
 
   const removeIngredient = (idx) => {
