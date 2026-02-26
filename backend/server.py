@@ -1054,6 +1054,132 @@ async def get_restaurants_stats():
     
     return stats
 
+@api_router.get("/dashboard/restaurant/{restaurant_id}")
+async def get_restaurant_dashboard(restaurant_id: str, date: Optional[str] = None):
+    """Dashboard complet pour un restaurant sélectionné"""
+    
+    # Vérifier que le restaurant existe
+    restaurant = await db.restaurants.find_one({"id": restaurant_id}, {"_id": 0})
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant non trouvé")
+    
+    # Filtre par date si fourni
+    ventes_query = {"restaurant_id": restaurant_id}
+    if date:
+        ventes_query["date_vente"] = date
+    
+    # Stats globales du restaurant
+    pipeline_global = [
+        {"$match": ventes_query},
+        {"$group": {
+            "_id": None,
+            "ca_total": {"$sum": "$ca_ttc"},
+            "ca_food": {"$sum": {"$cond": [{"$eq": ["$is_food", True]}, "$ca_ttc", 0]}},
+            "ca_drink": {"$sum": {"$cond": [{"$eq": ["$is_food", False]}, "$ca_ttc", 0]}},
+            "total_remise": {"$sum": "$remise"},
+            "total_quantite": {"$sum": "$quantite"},
+            "nb_lignes": {"$sum": 1}
+        }}
+    ]
+    stats_result = await db.ventes.aggregate(pipeline_global).to_list(1)
+    stats = stats_result[0] if stats_result else {
+        "ca_total": 0, "ca_food": 0, "ca_drink": 0, 
+        "total_remise": 0, "total_quantite": 0, "nb_lignes": 0
+    }
+    
+    # Top 10 ventes Global
+    top_global = await db.ventes.aggregate([
+        {"$match": ventes_query},
+        {"$group": {
+            "_id": "$produit_nom",
+            "quantite": {"$sum": "$quantite"},
+            "ca": {"$sum": "$ca_ttc"},
+            "is_food": {"$first": "$is_food"}
+        }},
+        {"$sort": {"quantite": -1}},
+        {"$limit": 10}
+    ]).to_list(10)
+    
+    # Top 10 Nourriture
+    top_food = await db.ventes.aggregate([
+        {"$match": {**ventes_query, "is_food": True}},
+        {"$group": {
+            "_id": "$produit_nom",
+            "quantite": {"$sum": "$quantite"},
+            "ca": {"$sum": "$ca_ttc"}
+        }},
+        {"$sort": {"quantite": -1}},
+        {"$limit": 10}
+    ]).to_list(10)
+    
+    # Top 10 Boissons
+    top_drink = await db.ventes.aggregate([
+        {"$match": {**ventes_query, "is_food": False}},
+        {"$group": {
+            "_id": "$produit_nom",
+            "quantite": {"$sum": "$quantite"},
+            "ca": {"$sum": "$ca_ttc"}
+        }},
+        {"$sort": {"quantite": -1}},
+        {"$limit": 10}
+    ]).to_list(10)
+    
+    # Répartition par catégorie (famille)
+    # On utilise la famille depuis les ventes si disponible, sinon le nom du produit
+    by_category = await db.ventes.aggregate([
+        {"$match": ventes_query},
+        {"$group": {
+            "_id": "$is_food",
+            "ca": {"$sum": "$ca_ttc"},
+            "quantite": {"$sum": "$quantite"},
+            "remise": {"$sum": "$remise"}
+        }}
+    ]).to_list(10)
+    
+    # Food cost moyen des fiches de ce restaurant
+    fiches_stats = await db.fiches_techniques.aggregate([
+        {"$match": {"restaurant_id": restaurant_id, "statut": "fait"}},
+        {"$group": {
+            "_id": None,
+            "avg_food_cost": {"$avg": "$food_cost_pct"},
+            "total_cout": {"$sum": "$cout_total"}
+        }}
+    ]).to_list(1)
+    
+    food_cost_data = fiches_stats[0] if fiches_stats else {"avg_food_cost": 0, "total_cout": 0}
+    
+    # Dates disponibles pour ce restaurant
+    dates_pipeline = [
+        {"$match": {"restaurant_id": restaurant_id}},
+        {"$group": {"_id": "$date_vente"}},
+        {"$sort": {"_id": -1}},
+        {"$limit": 30}
+    ]
+    dates_result = await db.ventes.aggregate(dates_pipeline).to_list(30)
+    dates_disponibles = [d["_id"] for d in dates_result]
+    
+    return {
+        "restaurant": restaurant,
+        "date_selectionnee": date,
+        "dates_disponibles": dates_disponibles,
+        "kpis": {
+            "ca_total": round(stats.get("ca_total", 0), 0),
+            "ca_food": round(stats.get("ca_food", 0), 0),
+            "ca_drink": round(stats.get("ca_drink", 0), 0),
+            "total_remise": round(stats.get("total_remise", 0), 0),
+            "total_quantite": stats.get("total_quantite", 0),
+            "nb_lignes": stats.get("nb_lignes", 0),
+            "avg_food_cost": round(food_cost_data.get("avg_food_cost", 0) or 0, 1)
+        },
+        "top_global": [{"nom": t["_id"], "quantite": t["quantite"], "ca": round(t["ca"], 0), "is_food": t.get("is_food", True)} for t in top_global],
+        "top_food": [{"nom": t["_id"], "quantite": t["quantite"], "ca": round(t["ca"], 0)} for t in top_food],
+        "top_drink": [{"nom": t["_id"], "quantite": t["quantite"], "ca": round(t["ca"], 0)} for t in top_drink],
+        "repartition": {
+            "food": next((c for c in by_category if c["_id"] == True), {"ca": 0, "quantite": 0, "remise": 0}),
+            "drink": next((c for c in by_category if c["_id"] == False), {"ca": 0, "quantite": 0, "remise": 0})
+        }
+    }
+
 # ====================== CATEGORIES ======================
 
 @api_router.get("/categories")
