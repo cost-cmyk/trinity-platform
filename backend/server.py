@@ -749,7 +749,7 @@ def parse_xls_file(file_content: bytes, filename: str) -> List[dict]:
                 'remise': 9
             }
             header_row = 0
-            logging.info(f"Pas d'en-tête, utilisation format PSW par défaut")
+            logging.info("Pas d'en-tête, utilisation format PSW par défaut")
         
         # Parser les données
         for row_idx in range(header_row + 1, sheet.nrows):
