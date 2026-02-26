@@ -2012,12 +2012,40 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
   const [filterRestaurant, setFilterRestaurant] = useState("");
   const [filterStatut, setFilterStatut] = useState("");
   const [expandedId, setExpandedId] = useState(null);
+  
+  // États du formulaire
   const [form, setForm] = useState({
-    nom: "", restaurant_id: "", type_fiche: "standard", famille: "",
-    nb_portions: "1", prix_vente: "", statut: "brouillon", ingredients: []
+    nom: "", 
+    restaurant_id: "", 
+    type_fiche: "produit_fini", // produit_fini ou preparation_base
+    famille: "",
+    is_food: true, // true=Nourriture, false=Boisson
+    nb_portions: "1", 
+    prix_vente: "", 
+    statut: "brouillon", 
+    ingredients: [],
+    linked_produit_ids: [], // Produits de la carte rattachés
+    photo_url: null
   });
+  
+  // États pour l'ajout d'ingrédients
+  const [ingredientTab, setIngredientTab] = useState("achat"); // "achat" ou "sous_fiche"
+  const [achatsSearch, setAchatsSearch] = useState("");
+  const [achatsResults, setAchatsResults] = useState([]);
+  const [fichesSearch, setFichesSearch] = useState("");
+  const [fichesResults, setFichesResults] = useState([]);
+  const [produitsSearch, setProduitsSearch] = useState("");
+  const [produitsResults, setProduitsResults] = useState([]);
+  
+  // État pour l'ingrédient en cours d'ajout
   const [newIngredient, setNewIngredient] = useState({
-    nom: "", quantite: "", unite: "g", prix_unitaire: ""
+    nom: "", 
+    quantite: "", 
+    unite: "g", 
+    prix_unitaire: "",
+    type_ingredient: "achat",
+    fournisseur: null,
+    date_achat: null
   });
 
   const unites = ["g", "kg", "L", "ml", "cl", "unité", "pièce"];
