@@ -254,7 +254,50 @@ const Sidebar = ({ collapsed, setCollapsed, activeModule, setActiveModule, resta
 
 // ====================== DASHBOARD ======================
 
-const Dashboard = ({ stats, restaurantStats, loading }) => {
+const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
+  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+  const [restoDashboard, setRestoDashboard] = useState(null);
+  const [restoLoading, setRestoLoading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
+
+  // Charger le dashboard d'un restaurant sélectionné
+  const loadRestaurantDashboard = useCallback(async (restoId, date = null) => {
+    if (!restoId) {
+      setRestoDashboard(null);
+      return;
+    }
+    
+    setRestoLoading(true);
+    try {
+      const url = date 
+        ? `${API}/dashboard/restaurant/${restoId}?date=${date}`
+        : `${API}/dashboard/restaurant/${restoId}`;
+      const res = await axios.get(url);
+      setRestoDashboard(res.data);
+      if (!date && res.data.dates_disponibles?.length > 0) {
+        setSelectedDate(res.data.dates_disponibles[0]);
+      }
+    } catch (err) {
+      toast.error("Erreur chargement données restaurant");
+      setRestoDashboard(null);
+    } finally {
+      setRestoLoading(false);
+    }
+  }, []);
+
+  const handleSelectRestaurant = (resto) => {
+    setSelectedRestaurant(resto);
+    setSelectedDate(null);
+    loadRestaurantDashboard(resto?.id);
+  };
+
+  const handleDateChange = (date) => {
+    setSelectedDate(date);
+    if (selectedRestaurant) {
+      loadRestaurantDashboard(selectedRestaurant.id, date);
+    }
+  };
+
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -268,6 +311,194 @@ const Dashboard = ({ stats, restaurantStats, loading }) => {
     );
   }
 
+  // Vue Dashboard Restaurant Sélectionné
+  if (selectedRestaurant && restoDashboard) {
+    const kpis = restoDashboard.kpis;
+    const pctFood = kpis.ca_total > 0 ? (kpis.ca_food / kpis.ca_total * 100) : 0;
+    const pctDrink = kpis.ca_total > 0 ? (kpis.ca_drink / kpis.ca_total * 100) : 0;
+    
+    return (
+      <div className="space-y-6" data-testid="restaurant-dashboard">
+        {/* Header avec retour */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => handleSelectRestaurant(null)}
+              className="p-2 hover:bg-accent rounded-lg"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-3">
+              <div 
+                className="w-4 h-4 rounded-full" 
+                style={{ backgroundColor: selectedRestaurant.couleur }}
+              />
+              <div>
+                <h1 className="text-2xl font-bold">{selectedRestaurant.nom}</h1>
+                <p className="text-sm text-muted-foreground">{selectedRestaurant.type}</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Sélecteur de date */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Date :</span>
+            <select
+              value={selectedDate || ""}
+              onChange={(e) => handleDateChange(e.target.value || null)}
+              className="trinity-input w-auto"
+            >
+              <option value="">Toutes les dates</option>
+              {restoDashboard.dates_disponibles?.map(d => (
+                <option key={d} value={d}>{new Date(d).toLocaleDateString('fr-FR')}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {restoLoading ? (
+          <div className="text-center py-8 text-muted-foreground">Chargement...</div>
+        ) : (
+          <>
+            {/* KPIs Restaurant */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <KPICard 
+                label="CA Total" 
+                value={fmtK(kpis.ca_total)} 
+                suffix="F" 
+                icon={TrendingUp}
+              />
+              <KPICard 
+                label="Nourriture" 
+                value={fmtK(kpis.ca_food)} 
+                suffix="F"
+                color="text-orange-400"
+              />
+              <KPICard 
+                label="Boissons" 
+                value={fmtK(kpis.ca_drink)} 
+                suffix="F"
+                color="text-cyan-400"
+              />
+              <KPICard 
+                label="Total Remises" 
+                value={fmtK(kpis.total_remise)} 
+                suffix="F"
+                color="text-purple-400"
+              />
+              <KPICard 
+                label="Articles vendus" 
+                value={fmtK(kpis.total_quantite)}
+              />
+              <KPICard 
+                label="Food Cost Moyen" 
+                value={fmtPct(kpis.avg_food_cost)}
+                color={getFoodCostColor(kpis.avg_food_cost)}
+              />
+            </div>
+
+            {/* Répartition CA Nourriture/Boissons */}
+            <div className="trinity-card">
+              <h3 className="text-sm font-medium mb-3">Répartition CA</h3>
+              <div className="flex gap-4 mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-orange-500" />
+                  <span className="text-sm">Nourriture {fmtPct(pctFood)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-cyan-500" />
+                  <span className="text-sm">Boissons {fmtPct(pctDrink)}</span>
+                </div>
+              </div>
+              <div className="h-4 bg-secondary rounded-full overflow-hidden flex">
+                <div className="bg-orange-500 h-full" style={{ width: `${pctFood}%` }} />
+                <div className="bg-cyan-500 h-full" style={{ width: `${pctDrink}%` }} />
+              </div>
+            </div>
+
+            {/* Top Ventes en 3 colonnes */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Top 10 Global */}
+              <div className="trinity-card">
+                <h3 className="text-lg font-semibold mb-4">Top 10 Global</h3>
+                {restoDashboard.top_global?.length > 0 ? (
+                  <div className="space-y-2">
+                    {restoDashboard.top_global.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-3">
+                        <span className="w-5 text-xs font-mono text-muted-foreground">{idx + 1}</span>
+                        <Pill type={item.is_food ? "food" : "drink"}>
+                          {item.is_food ? "N" : "B"}
+                        </Pill>
+                        <span className="flex-1 text-sm truncate">{item.nom}</span>
+                        <span className="text-xs font-mono text-muted-foreground">{item.quantite}</span>
+                        <span className="text-xs font-mono">{fmtPrice(item.ca)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Aucune vente</p>
+                )}
+              </div>
+
+              {/* Top 10 Nourriture */}
+              <div className="trinity-card">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-3 h-3 rounded-full bg-orange-500" />
+                  <h3 className="text-lg font-semibold">Top 10 Nourriture</h3>
+                </div>
+                {restoDashboard.top_food?.length > 0 ? (
+                  <div className="space-y-2">
+                    {restoDashboard.top_food.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-3">
+                        <span className="w-5 text-xs font-mono text-muted-foreground">{idx + 1}</span>
+                        <span className="flex-1 text-sm truncate">{item.nom}</span>
+                        <span className="text-xs font-mono text-muted-foreground">{item.quantite}</span>
+                        <span className="text-xs font-mono">{fmtPrice(item.ca)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Aucune vente</p>
+                )}
+              </div>
+
+              {/* Top 10 Boissons */}
+              <div className="trinity-card">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-3 h-3 rounded-full bg-cyan-500" />
+                  <h3 className="text-lg font-semibold">Top 10 Boissons</h3>
+                </div>
+                {restoDashboard.top_drink?.length > 0 ? (
+                  <div className="space-y-2">
+                    {restoDashboard.top_drink.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-3">
+                        <span className="w-5 text-xs font-mono text-muted-foreground">{idx + 1}</span>
+                        <span className="flex-1 text-sm truncate">{item.nom}</span>
+                        <span className="text-xs font-mono text-muted-foreground">{item.quantite}</span>
+                        <span className="text-xs font-mono">{fmtPrice(item.ca)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Aucune vente</p>
+                )}
+              </div>
+            </div>
+
+            {/* Food Cost Gauge */}
+            {kpis.avg_food_cost > 0 && (
+              <div className="trinity-card max-w-md">
+                <h3 className="text-sm font-medium mb-3">Food Cost Moyen</h3>
+                <Gauge value={kpis.avg_food_cost} label="Food Cost %" />
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // Vue Dashboard Groupe (par défaut)
   return (
     <div className="space-y-8" data-testid="dashboard">
       <div>
@@ -308,10 +539,11 @@ const Dashboard = ({ stats, restaurantStats, loading }) => {
         </div>
       )}
 
-      {/* Restaurants Stats */}
+      {/* Restaurants Stats - Cliquables */}
       {restaurantStats.length > 0 ? (
         <div className="trinity-card">
           <h3 className="text-lg font-semibold mb-4">Performance par Restaurant</h3>
+          <p className="text-sm text-muted-foreground mb-4">Cliquez sur un restaurant pour voir son dashboard</p>
           <div className="overflow-x-auto">
             <table className="trinity-table">
               <thead>
@@ -326,7 +558,11 @@ const Dashboard = ({ stats, restaurantStats, loading }) => {
               </thead>
               <tbody>
                 {restaurantStats.map((r) => (
-                  <tr key={r.id}>
+                  <tr 
+                    key={r.id} 
+                    className="cursor-pointer hover:bg-accent/50"
+                    onClick={() => handleSelectRestaurant(restaurants.find(resto => resto.id === r.id))}
+                  >
                     <td>
                       <div className="flex items-center gap-2">
                         <div 
@@ -358,7 +594,7 @@ const Dashboard = ({ stats, restaurantStats, loading }) => {
       {/* Top Ventes */}
       {stats.top_ventes && stats.top_ventes.length > 0 && (
         <div className="trinity-card">
-          <h3 className="text-lg font-semibold mb-4">Top 10 Ventes</h3>
+          <h3 className="text-lg font-semibold mb-4">Top 10 Ventes Groupe</h3>
           <div className="space-y-3">
             {stats.top_ventes.map((item, idx) => (
               <div key={idx} className="flex items-center gap-4">
