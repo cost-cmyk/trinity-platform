@@ -2070,44 +2070,54 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
 
   // Fonction pour parser l'unité d'achat et extraire l'unité standard
   const parseUniteAchat = (uniteAchat) => {
-    if (!uniteAchat) return { unite: "kg", quantiteBase: 1 };
+    console.log("🔍 parseUniteAchat - Input:", uniteAchat);
     
-    // Normaliser l'unité
-    const uniteStr = uniteAchat.toString().toLowerCase().trim();
-    
-    // Cas 1: "/kg", "/l", etc (juste l'unité avec /)
-    if (uniteStr.startsWith('/')) {
-      const unite = uniteStr.substring(1);
-      const uniteNormalisee = {
-        'kg': 'kg', 'g': 'g',
-        'l': 'L', 'ml': 'ml', 'cl': 'cl',
-        'unite': 'unité', 'piece': 'pièce', 'pce': 'pièce'
-      }[unite] || 'kg';
-      return { unite: uniteNormalisee, quantiteBase: 1 };
+    if (!uniteAchat) {
+      console.log("❌ parseUniteAchat - Pas d'unité, retour défaut kg");
+      return { unite: "kg", quantiteBase: 1 };
     }
     
-    // Cas 2: "500g", "70CL", "1KG" (nombre + unité)
-    const match = uniteStr.match(/(\d+\.?\d*)\s*([a-zA-Z]+)/);
+    // Normaliser l'unité
+    let uniteStr = uniteAchat.toString().toLowerCase().trim();
+    console.log("📝 parseUniteAchat - Après normalisation:", uniteStr);
+    
+    // Retirer le "/" au début s'il existe (ex: "/kg" ou "/500g")
+    if (uniteStr.startsWith('/')) {
+      uniteStr = uniteStr.substring(1);
+      console.log("✂️ parseUniteAchat - Après retrait du /:", uniteStr);
+    }
+    
+    // Dictionnaire de normalisation des unités
+    const uniteDict = {
+      'kg': 'kg', 'g': 'g',
+      'l': 'L', 'ml': 'ml', 'cl': 'cl',
+      'unite': 'unité', 'piece': 'pièce', 'pce': 'pièce'
+    };
+    
+    // Cas 1: Unité avec quantité (ex: "500g", "70cl", "1kg")
+    const match = uniteStr.match(/^(\d+\.?\d*)\s*([a-zA-Z]+)$/);
     
     if (match) {
       const quantiteBase = parseFloat(match[1]);
-      const unite = match[2].toLowerCase();
+      const uniteRaw = match[2].toLowerCase();
+      const uniteNormalisee = uniteDict[uniteRaw] || uniteRaw;
       
-      const uniteNormalisee = {
-        'g': 'g', 'kg': 'kg',
-        'ml': 'ml', 'cl': 'cl', 'l': 'L',
-        'unite': 'unité', 'piece': 'pièce', 'pce': 'pièce'
-      }[unite] || 'unité';
+      console.log("✅ parseUniteAchat - Cas quantité+unité:", {
+        quantiteBase,
+        uniteRaw,
+        uniteNormalisee
+      });
       
       return { unite: uniteNormalisee, quantiteBase };
     }
     
-    // Cas 3: Unité simple ("kg", "g", "L")
-    const uniteNormalisee = {
-      'g': 'g', 'kg': 'kg',
-      'ml': 'ml', 'cl': 'cl', 'l': 'L',
-      'unite': 'unité', 'piece': 'pièce', 'pce': 'pièce'
-    }[uniteStr] || 'kg';
+    // Cas 2: Unité simple (ex: "kg", "g", "l")
+    const uniteNormalisee = uniteDict[uniteStr] || uniteStr;
+    
+    console.log("✅ parseUniteAchat - Cas unité simple:", {
+      unite: uniteNormalisee,
+      quantiteBase: 1
+    });
     
     return { unite: uniteNormalisee, quantiteBase: 1 };
   };
