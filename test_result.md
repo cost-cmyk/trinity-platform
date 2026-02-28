@@ -101,3 +101,154 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: |
+  Test 3 bug fixes in Fiche Technique form:
+  1. Bug Filtre Famille - Should load families from selected restaurant
+  2. Bug Parsing d'Unité - Should parse "/500g" to unit="g", quantiteBase=500
+  3. Bug Calcul de Coût - Should calculate proportional cost correctly
+
+frontend:
+  - task: "Bug Fix 1: Restaurant Selection Triggers Famille Loading"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/App.js"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: |
+          CRITICAL BUG FOUND: The restaurant selection onChange event is NOT firing.
+          
+          Test performed: Selected restaurant "Meherio" (ID: 27c9ee6f-1449-4326-b891-5cf0d21f5881) from dropdown.
+          
+          Expected console logs (from line 2670-2673 in App.js):
+          - "🏪 Changement restaurant sélectionné: {restaurant_id}"
+          - "📞 Appel direct loadFamilles depuis onChange"
+          - "📡 loadFamilles - Appel API: {url}"
+          - "✅ loadFamilles - Réponse API: {data}"
+          
+          Actual result: NONE of these logs appeared in console.
+          
+          Root cause: The onChange handler at line 2669-2674 is NOT being triggered when the select value changes.
+          The code has the correct implementation with console logs, but React is not calling the onChange function.
+          
+          Evidence:
+          1. Console shows "famillesDisponibles.length: 6" (default families)
+          2. No API call to /api/restaurants/{id}/familles was made during restaurant selection
+          3. Backend logs show the API endpoint works (returned 200 OK in previous sessions)
+          4. The useEffect at line 2297-2308 triggers but form.restaurant_id is empty
+          
+          The Select component (line 268-284) uses standard React pattern: onChange={(e) => onChange(e.target.value)}
+          
+          This prevents testing of Bug #2 and Bug #3 as product search requires a restaurant to be selected first.
+          The search input shows "Sélectionnez d'abord un restaurant" and is disabled.
+
+  - task: "Bug Fix 2: Parse Unite Achat (/500g format)"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: |
+          NOT TESTED: Cannot test this bug fix because the restaurant selection (Bug #1) is not working.
+          
+          The product search input requires a restaurant to be selected first (disabled state).
+          Once Bug #1 is fixed, this needs to be tested by:
+          1. Selecting a restaurant
+          2. Searching for "Ail Pelée" (310 F / /500g)
+          3. Verifying console logs show correct parsing
+          4. Verifying "Cond." field shows "g" (not "unité")
+          
+          Implementation appears correct in code (line 2072-2123 parseUniteAchat function with detailed logging).
+
+  - task: "Bug Fix 3: Calculate Proportional Cost"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: |
+          NOT TESTED: Cannot test this bug fix because the restaurant selection (Bug #1) is not working.
+          
+          The cost calculation requires:
+          1. Restaurant selected
+          2. Product selected (with parsed unit)
+          3. Quantity entered
+          
+          Once Bug #1 is fixed, this needs to be tested by:
+          1. Selecting "Ail Pelée" (310 F / 500g)
+          2. Entering quantity "100" (g)
+          3. Verifying console shows cost calculation: (100/500) * 310 = 62 F
+          4. Verifying "Coût portion" field displays "62"
+          
+          Implementation appears correct in code (line 2995-3021 with detailed calculation logging).
+
+metadata:
+  created_by: "testing_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: true
+
+test_plan:
+  current_focus:
+    - "Bug Fix 1: Restaurant Selection Triggers Famille Loading"
+  stuck_tasks:
+    - "Bug Fix 1: Restaurant Selection Triggers Famille Loading"
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "testing"
+    message: |
+      CRITICAL ISSUE FOUND - Restaurant Selection onChange Not Firing
+      
+      I performed comprehensive testing of the 3 bug fixes in the Fiche Technique form.
+      
+      **BUG #1 - FAILED (CRITICAL):**
+      The restaurant selection dropdown's onChange handler is NOT being called at all.
+      - Tested by selecting restaurant "Meherio" from the dropdown
+      - Expected console logs with emojis (🏪, 📡, ✅) did not appear
+      - The onChange code at line 2669-2674 is correctly implemented with detailed logging
+      - But React is not triggering the onChange callback
+      - This blocks testing of Bug #2 and Bug #3
+      
+      **BUG #2 - NOT TESTED:**
+      Cannot test parseUniteAchat because product search is disabled until a restaurant is selected.
+      The implementation looks correct (line 2072-2123).
+      
+      **BUG #3 - NOT TESTED:**
+      Cannot test cost calculation for the same reason.
+      The implementation looks correct (line 2995-3021).
+      
+      **INVESTIGATION NEEDED:**
+      The Select component (line 268-284) uses standard React pattern.
+      The onChange handler is properly defined at line 2669-2674.
+      But when the select value changes, the onChange is not called.
+      
+      Possible causes:
+      1. React synthetic event not properly bound
+      2. Event propagation being stopped somewhere
+      3. Select value being controlled incorrectly
+      4. Issue with how form state is managed
+      
+      **RECOMMENDATION:**
+      Main agent should investigate why the onChange handler for the Restaurant select is not firing.
+      This is blocking all testing of the 3 bug fixes.
+      
+      Backend API endpoint works fine (logs show 200 OK for /api/restaurants/{id}/familles).
+      
+      Screenshots available in .screenshots/ directory showing:
+      - Modal opened with empty restaurant selection
+      - Restaurant dropdown with available options
+      - Product search disabled with message "Sélectionnez d'abord un restaurant"
