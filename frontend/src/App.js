@@ -2038,6 +2038,7 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
   const [fichesResults, setFichesResults] = useState([]);
   const [produitsSearch, setProduitsSearch] = useState("");
   const [produitsResults, setProduitsResults] = useState([]);
+  const [famillesDisponibles, setFamillesDisponibles] = useState([]);
   
   // État pour l'ingrédient en cours d'ajout
   const [newIngredient, setNewIngredient] = useState({
