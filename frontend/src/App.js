@@ -2181,6 +2181,21 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
     setProduitsResults(filtered);
   };
 
+  // Charger les familles quand le restaurant change
+  const loadFamilles = async (restaurantId) => {
+    if (!restaurantId) {
+      setFamillesDisponibles(["Entrées", "Plats", "Desserts", "Boissons", "Préparations de base", "Sauces"]);
+      return;
+    }
+    try {
+      const response = await axios.get(`${API}/restaurants/${restaurantId}/familles`);
+      setFamillesDisponibles(response.data);
+    } catch (err) {
+      console.error("Erreur chargement familles:", err);
+      setFamillesDisponibles(["Entrées", "Plats", "Desserts", "Boissons", "Préparations de base", "Sauces"]);
+    }
+  };
+
   const filteredFiches = fiches.filter((f) => {
     if (search && !f.nom.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterRestaurant && f.restaurant_id !== filterRestaurant) return false;
