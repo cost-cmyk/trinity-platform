@@ -1891,6 +1891,29 @@ async def get_categories():
         "unites": ["g", "kg", "L", "ml", "cl", "unité", "pièce"]
     }
 
+@api_router.get("/restaurants/{restaurant_id}/familles")
+async def get_familles_by_restaurant(restaurant_id: str):
+    """Récupérer les familles uniques d'un restaurant depuis les produits existants"""
+    try:
+        # Récupérer les familles uniques depuis les produits
+        familles_produits = await db.produits.distinct("famille", {"restaurant_id": restaurant_id})
+        
+        # Récupérer les familles depuis les fiches techniques
+        familles_fiches = await db.fiches_techniques.distinct("famille", {"restaurant_id": restaurant_id})
+        
+        # Combiner et dédupliquer
+        familles = list(set([f for f in familles_produits + familles_fiches if f]))
+        
+        # Si vide, retourner des familles par défaut
+        if not familles:
+            familles = ["Entrées", "Plats", "Desserts", "Boissons", "Préparations de base", "Sauces"]
+        
+        return sorted(familles)
+        
+    except Exception as e:
+        logger.error(f"Erreur get_familles_by_restaurant: {e}")
+        return ["Entrées", "Plats", "Desserts", "Boissons"]
+
 # ====================== HEALTH ======================
 
 @api_router.get("/")
