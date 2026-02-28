@@ -2108,16 +2108,28 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
 
   // Recherche d'achats pour autocomplétion
   const searchAchats = async (query) => {
-    if (!query || query.length < 2 || !form.restaurant_id) {
+    console.log("🔍 searchAchats appelé avec query:", query, "restaurant_id:", form.restaurant_id);
+    
+    if (!query || query.length < 2) {
+      console.log("❌ Query trop courte");
       setAchatsResults([]);
       return;
     }
+    
+    if (!form.restaurant_id) {
+      console.log("❌ Pas de restaurant sélectionné");
+      setAchatsResults([]);
+      return;
+    }
+    
     try {
+      console.log("📡 Appel API achats...");
       const response = await axios.get(`${API}/achats?restaurant_id=${form.restaurant_id}`);
+      console.log("✅ Réponse API:", response.data.length, "achats");
+      
       const filtered = response.data
         .filter(a => a.produit && a.produit.toLowerCase().includes(query.toLowerCase()))
         .reduce((acc, achat) => {
-          // Grouper par produit et garder le dernier achat
           const existing = acc.find(item => item.produit === achat.produit && item.fournisseur === achat.fournisseur);
           if (!existing || new Date(achat.date_achat) > new Date(existing.date_achat)) {
             return [...acc.filter(item => !(item.produit === achat.produit && item.fournisseur === achat.fournisseur)), achat];
@@ -2125,9 +2137,12 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
           return acc;
         }, [])
         .slice(0, 10);
+      
+      console.log("✅ Résultats filtrés:", filtered.length);
       setAchatsResults(filtered);
+      
     } catch (err) {
-      console.error("Erreur recherche achats:", err);
+      console.error("❌ Erreur recherche achats:", err);
       setAchatsResults([]);
     }
   };
