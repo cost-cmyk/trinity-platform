@@ -265,13 +265,14 @@ const CoutTheoriqueSection = ({ restaurantId, date, caFood, caDrink }) => {
 };
 
 
-const Select = ({ label, value, onChange, options, placeholder = "Sélectionner...", className = "" }) => (
+const Select = ({ label, value, onChange, options, placeholder = "Sélectionner...", className = "", disabled = false }) => (
   <div className={`space-y-1 ${className}`}>
     {label && <label className="text-sm text-muted-foreground">{label}</label>}
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className="trinity-input"
+      disabled={disabled}
     >
       <option value="">{placeholder}</option>
       {options.map((opt) => (
