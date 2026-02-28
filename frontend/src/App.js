@@ -2255,15 +2255,20 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
     });
     setEditingId(fiche.id);
     setShowForm(true);
-    loadFamilles(fiche.restaurant_id);
+    if (fiche.restaurant_id) {
+      loadFamilles(fiche.restaurant_id);
+    }
   };
 
-  // Charger les familles quand le formulaire s'ouvre ou que le restaurant change
+  // Charger les familles UNIQUEMENT quand le restaurant change (pas à chaque render)
   React.useEffect(() => {
-    if (form.restaurant_id && showForm) {
+    if (form.restaurant_id) {
+      console.log("🔄 useEffect: Chargement familles pour", form.restaurant_id);
       loadFamilles(form.restaurant_id);
+    } else {
+      setFamillesDisponibles(["Entrées", "Plats", "Desserts", "Boissons", "Préparations de base", "Sauces"]);
     }
-  }, [form.restaurant_id, showForm]);
+  }, [form.restaurant_id]); // Uniquement quand restaurant_id change
 
   const addIngredient = () => {
     if (!newIngredient.nom || !newIngredient.quantite) {
