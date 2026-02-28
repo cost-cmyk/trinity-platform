@@ -2911,7 +2911,16 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                           key={idx}
                           type="button"
                           onClick={() => {
+                            console.log("🛒 Sélection achat:", {
+                              produit: achat.produit,
+                              unite_brute: achat.unite,
+                              prix_unitaire: achat.prix_unitaire
+                            });
+                            
                             const { unite, quantiteBase } = parseUniteAchat(achat.unite);
+                            
+                            console.log("✅ Après parsing:", { unite, quantiteBase });
+                            
                             setNewIngredient({
                               nom: achat.produit,
                               quantite: "",
@@ -2923,6 +2932,9 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                               quantite_base_achat: quantiteBase, // Quantité de base de l'unité d'achat
                               unite_achat_originale: achat.unite // Pour affichage
                             });
+                            
+                            console.log("✅ newIngredient mis à jour");
+                            
                             setAchatsSearch("");
                             setAchatsResults([]);
                           }}
