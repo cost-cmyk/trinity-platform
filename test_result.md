@@ -249,11 +249,11 @@ frontend:
 
   - task: "Bug Fix 3: Calculate Proportional Cost"
     implemented: true
-    working: false
+    working: "NA"
     file: "/app/frontend/src/App.js"
     stuck_count: 1
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: "NA"
         agent: "testing"
@@ -308,6 +308,41 @@ frontend:
           4. The product selection flow might not be populating all required fields in newIngredient
           
           Need to check where newIngredient is populated when a product is selected from autocomplete.
+      
+      - working: "NA"
+        agent: "testing"
+        comment: |
+          ❌ NOT TESTED: Cannot test Bug #3 because Bug #1 has regressed (2026-02-28)
+          
+          User requested detailed testing of Bug #3 "Calcul de Coût" with console log analysis to identify
+          which value is missing from the cost calculation condition.
+          
+          Test attempted:
+          1. Open "Nouvelle Fiche" modal
+          2. Select restaurant "Meherio"
+          3. Search for "Ail" in product search
+          4. Select "Ail Pelée" (310 F / 500g)
+          5. Enter "100" in quantity field
+          6. Analyze console logs to identify missing values
+          
+          Result: BLOCKED AT STEP 2
+          
+          The restaurant selection (Bug #1) is NOT working:
+          - onChange handler does not fire when restaurant is selected
+          - No console logs for restaurant selection appear
+          - form.restaurant_id remains empty
+          - Product search input remains DISABLED
+          
+          Cannot proceed with Bug #3 testing until Bug #1 is properly fixed.
+          
+          The code for Bug #3 (lines 2924-3031) appears correctly implemented with detailed logging:
+          - Line 2925-2929: Logs product selection with prix_unitaire
+          - Line 2931-2933: Calls parseUniteAchat and logs result
+          - Line 2935-2948: Creates newIngData with all required fields including quantite_base_achat
+          - Line 3001-3006: Logs newIngredient state with all 3 required values
+          - Line 3008-3027: Performs calculation if all values present
+          
+          Once Bug #1 is fixed, Bug #3 needs full testing to verify if the calculation works correctly.
 
 metadata:
   created_by: "testing_agent"
