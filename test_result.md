@@ -352,10 +352,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Bug Fix 3: Calculate Proportional Cost"
-  stuck_tasks: []
+    - "Bug Fix 1: Restaurant Selection Triggers Famille Loading"
+  stuck_tasks:
+    - "Bug Fix 1: Restaurant Selection Triggers Famille Loading"
   test_all: false
-  test_priority: "high_first"
+  test_priority: "stuck_first"
 
 agent_communication:
   - agent: "testing"
