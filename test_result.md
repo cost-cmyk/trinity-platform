@@ -316,6 +316,47 @@ agent_communication:
       1. React synthetic event not properly bound
       2. Event propagation being stopped somewhere
       3. Select value being controlled incorrectly
+  - agent: "testing"
+    message: |
+      RE-TEST COMPLET DES 3 BUGS EFFECTUÉ
+      
+      **RÉSULTATS:**
+      
+      ✅✅✅ BUG #1: CORRIGÉ
+      - Le onChange du Select Restaurant fonctionne maintenant correctement
+      - Tous les logs attendus apparaissent (🏪, 📞, 📡, ✅)
+      - L'API /restaurants/{id}/familles est appelée et retourne 200 OK
+      - 6 familles sont chargées depuis l'API
+      - Le dropdown Famille est maintenant enabled et affiche les familles chargées
+      
+      ✅✅✅ BUG #2: CORRIGÉ  
+      - La fonction parseUniteAchat parse correctement le format /500g
+      - Logs parfaits: Input /500g → retrait du / → parsing en quantiteBase:500, unite:"g"
+      - Le champ Cond. affiche "g" (pas "unité")
+      - Fonctionne aussi pour /kg format
+      
+      ❌❌❌ BUG #3: PAS CORRIGÉ
+      - Le calcul de coût proportionnel ne se déclenche PAS
+      - Aucun log console de calcul n'apparaît (💵 Preview Coût)
+      - Le champ "Coût portion" affiche "—" au lieu du coût calculé
+      
+      **ROOT CAUSE BUG #3:**
+      Le code de calcul (lines 2995-3021) vérifie 3 conditions:
+      ```
+      newIngredient.quantite && newIngredient.prix_unitaire && newIngredient.quantite_base_achat
+      ```
+      
+      Puisqu'aucun log n'apparaît, au moins une de ces valeurs n'est pas définie dans newIngredient.
+      
+      **ACTIONS REQUISES POUR BUG #3:**
+      1. Vérifier où newIngredient est populé quand un produit est sélectionné depuis l'autocomplete
+      2. S'assurer que prix_unitaire est extrait et assigné au moment de la sélection
+      3. S'assurer que quantite_base_achat est assigné après l'appel à parseUniteAchat
+      4. Vérifier que le flow complet de sélection de produit met à jour tous les champs requis
+      
+      Le composant Select est maintenant entièrement fonctionnel (Bug #1 et #2 confirmés).
+      Seul le Bug #3 nécessite une correction supplémentaire.
+
       4. Issue with how form state is managed
       
       **RECOMMENDATION:**
