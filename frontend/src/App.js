@@ -2056,6 +2056,9 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
   const unites = ["g", "kg", "L", "ml", "cl", "unité", "pièce"];
   const familles = ["Entrées", "Plats", "Desserts", "Boissons", "Préparations de base", "Sauces"];
 
+  // Ref pour le timeout du debounce
+  const searchTimeoutRef = React.useRef(null);
+
   // Fonction de debounce pour optimiser les recherches
   const debounce = (func, delay) => {
     let timeoutId;
