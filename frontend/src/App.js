@@ -2313,6 +2313,15 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
       return;
     }
     
+    console.log("➕ addIngredient - Données ingrédient:", {
+      nom: newIngredient.nom,
+      quantite: newIngredient.quantite,
+      unite: newIngredient.unite,
+      prix_unitaire: newIngredient.prix_unitaire,
+      quantite_base_achat: newIngredient.quantite_base_achat,
+      type_ingredient: newIngredient.type_ingredient
+    });
+    
     // Calculer le coût_ligne selon le type
     let cout_ligne = 0;
     if (newIngredient.type_ingredient === "achat") {
@@ -2326,8 +2335,17 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
       const prixUnitaire = parseFloat(newIngredient.prix_unitaire);
       const qteBase = newIngredient.quantite_base_achat || 1;
       
+      console.log("💰 addIngredient - Calcul coût:", {
+        qteDemandee,
+        prixUnitaire,
+        qteBase,
+        formule: `(${qteDemandee} / ${qteBase}) * ${prixUnitaire}`
+      });
+      
       // Le prix est pour qteBase unités de l'unité sélectionnée
       cout_ligne = (qteDemandee / qteBase) * prixUnitaire;
+      
+      console.log("✅ addIngredient - Coût calculé:", cout_ligne, "F");
       
     } else {
       // Pour une sous-fiche, le cout_ligne est calculé au prorata
@@ -2335,6 +2353,7 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
       if (fiche && fiche.poids_total_g > 0) {
         const ratio = parseFloat(newIngredient.quantite) / fiche.poids_total_g;
         cout_ligne = fiche.cout_total * ratio;
+        console.log("✅ addIngredient - Coût sous-fiche:", cout_ligne, "F");
       }
     }
     
@@ -2344,6 +2363,8 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
       prix_unitaire: parseFloat(newIngredient.prix_unitaire) || 0,
       cout_ligne
     };
+    
+    console.log("✅ addIngredient - Ingrédient final:", ing);
     
     setForm({ ...form, ingredients: [...form.ingredients, ing] });
     setNewIngredient({ 
