@@ -2726,8 +2726,16 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
               <Select
                 label="Famille"
                 value={form.famille}
-                onChange={(v) => setForm({ ...form, famille: v })}
-                options={famillesDisponibles.length > 0 ? famillesDisponibles : familles}
+                onChange={(v) => {
+                  console.log("👨‍👩‍👧‍👦 Sélection famille:", v);
+                  setForm({ ...form, famille: v });
+                }}
+                options={(() => {
+                  const opts = famillesDisponibles.length > 0 ? famillesDisponibles : familles;
+                  console.log("👨‍👩‍👧‍👦 Options familles utilisées:", opts);
+                  console.log("👨‍👩‍👧‍👦 famillesDisponibles.length:", famillesDisponibles.length);
+                  return opts;
+                })()}
                 placeholder={form.restaurant_id ? "Sélectionner" : "Sélectionnez d'abord un restaurant"}
                 disabled={!form.restaurant_id}
               />
