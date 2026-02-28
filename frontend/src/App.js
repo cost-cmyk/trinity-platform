@@ -2208,15 +2208,23 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
 
   // Charger les familles quand le restaurant change
   const loadFamilles = async (restaurantId) => {
+    console.log("🏪 loadFamilles - Restaurant ID:", restaurantId);
+    
     if (!restaurantId) {
+      console.log("❌ loadFamilles - Pas de restaurant, familles par défaut");
       setFamillesDisponibles(["Entrées", "Plats", "Desserts", "Boissons", "Préparations de base", "Sauces"]);
       return;
     }
+    
     try {
+      console.log(`📡 loadFamilles - Appel API: ${API}/restaurants/${restaurantId}/familles`);
       const response = await axios.get(`${API}/restaurants/${restaurantId}/familles`);
+      console.log("✅ loadFamilles - Réponse API:", response.data);
+      console.log("✅ loadFamilles - Nombre de familles:", response.data.length);
       setFamillesDisponibles(response.data);
     } catch (err) {
-      console.error("Erreur chargement familles:", err);
+      console.error("❌ loadFamilles - Erreur:", err);
+      console.error("❌ loadFamilles - Détails:", err.response?.data);
       setFamillesDisponibles(["Entrées", "Plats", "Desserts", "Boissons", "Préparations de base", "Sauces"]);
     }
   };
