@@ -2812,13 +2812,10 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                     value={achatsSearch}
                     onChange={(e) => {
                       const value = e.target.value;
+                      console.log("📝 Input onChange:", value);
                       setAchatsSearch(value);
-                      // Appel direct sans debounce complexe
-                      if (value.length >= 2) {
-                        searchAchats(value);
-                      } else {
-                        setAchatsResults([]);
-                      }
+                      // Appel immédiat sans condition
+                      searchAchats(value);
                     }}
                     placeholder="Rechercher un produit..."
                     className="trinity-input"
@@ -2827,6 +2824,13 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                   <p className="text-xs text-muted-foreground mt-1">
                     {form.restaurant_id ? "Dernier prix d'achat par fournisseur - cliquez pour sélectionner" : "Sélectionnez d'abord un restaurant"}
                   </p>
+                  
+                  {/* Debug: afficher le nombre de résultats */}
+                  {achatsSearch.length >= 2 && (
+                    <p className="text-xs text-amber-500 mt-1">
+                      {achatsResults.length} résultat(s) trouvé(s)
+                    </p>
+                  )}
                   
                   {achatsResults.length > 0 && (
                     <div className="absolute z-10 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
