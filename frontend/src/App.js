@@ -2932,7 +2932,7 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                             
                             console.log("✅ Après parsing:", { unite, quantiteBase });
                             
-                            setNewIngredient({
+                            const newIngData = {
                               nom: achat.produit,
                               quantite: "",
                               unite: unite,
@@ -2942,9 +2942,11 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                               date_achat: achat.date_achat,
                               quantite_base_achat: quantiteBase, // Quantité de base de l'unité d'achat
                               unite_achat_originale: achat.unite // Pour affichage
-                            });
+                            };
                             
-                            console.log("✅ newIngredient mis à jour");
+                            console.log("✅ newIngredient DATA à setter:", newIngData);
+                            setNewIngredient(newIngData);
+                            console.log("✅ setNewIngredient appelé");
                             
                             setAchatsSearch("");
                             setAchatsResults([]);
