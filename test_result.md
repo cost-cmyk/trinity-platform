@@ -211,11 +211,11 @@ frontend:
 
   - task: "Bug Fix 3: Calculate Proportional Cost"
     implemented: true
-    working: "NA"
+    working: false
     file: "/app/frontend/src/App.js"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "testing"
@@ -234,6 +234,42 @@ frontend:
           4. Verifying "Coût portion" field displays "62"
           
           Implementation appears correct in code (line 2995-3021 with detailed calculation logging).
+      
+      - working: false
+        agent: "testing"
+        comment: |
+          ❌ BUG NOT WORKING: Cost calculation is not triggering when quantity is entered.
+          
+          Test performed:
+          1. Selected restaurant "Meherio"
+          2. Selected product "Ail Pelée" (310 F / /500g, correctly parsed to quantiteBase=500, unite="g")
+          3. Entered "100" in the Qté field of the ingredient form
+          
+          Expected console logs:
+          - "💵 Preview Coût - Calcul:" with qteDemandee:100, prixUnitaire:310, qteBase:500
+          - "💵 Preview Coût - Résultat: 62 F"
+          
+          Actual result: NO cost calculation logs appeared in console
+          
+          Root cause investigation:
+          The cost calculation at lines 2995-3021 requires ALL three values to be present:
+          - newIngredient.quantite (quantity entered)
+          - newIngredient.prix_unitaire (unit price)
+          - newIngredient.quantite_base_achat (base quantity from parsing)
+          
+          If any of these is missing, it displays "—" instead of calculating.
+          
+          Since no logs appeared, the condition on line 2998 is evaluating to FALSE, meaning at least one of these values is not being set in the newIngredient state when the product is selected and/or when quantity is entered.
+          
+          The Qté input (lines 2987-2993) correctly updates newIngredient.quantite via onChange, but something is preventing the cost preview from calculating.
+          
+          Possible issues:
+          1. prix_unitaire might not be extracted/set when product is selected
+          2. quantite_base_achat might not be set after parseUniteAchat runs
+          3. The ingredient form state update might not be triggering re-render
+          4. The product selection flow might not be populating all required fields in newIngredient
+          
+          Need to check where newIngredient is populated when a product is selected from autocomplete.
 
 metadata:
   created_by: "testing_agent"
