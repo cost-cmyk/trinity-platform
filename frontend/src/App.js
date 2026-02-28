@@ -2072,14 +2072,27 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
   const parseUniteAchat = (uniteAchat) => {
     if (!uniteAchat) return { unite: "kg", quantiteBase: 1 };
     
-    // Regex pour extraire nombre + unité (ex: "500g", "70CL", "1KG")
-    const match = uniteAchat.match(/(\d+\.?\d*)\s*([a-zA-Z]+)/);
+    // Normaliser l'unité
+    const uniteStr = uniteAchat.toString().toLowerCase().trim();
+    
+    // Cas 1: "/kg", "/l", etc (juste l'unité avec /)
+    if (uniteStr.startsWith('/')) {
+      const unite = uniteStr.substring(1);
+      const uniteNormalisee = {
+        'kg': 'kg', 'g': 'g',
+        'l': 'L', 'ml': 'ml', 'cl': 'cl',
+        'unite': 'unité', 'piece': 'pièce', 'pce': 'pièce'
+      }[unite] || 'kg';
+      return { unite: uniteNormalisee, quantiteBase: 1 };
+    }
+    
+    // Cas 2: "500g", "70CL", "1KG" (nombre + unité)
+    const match = uniteStr.match(/(\d+\.?\d*)\s*([a-zA-Z]+)/);
     
     if (match) {
       const quantiteBase = parseFloat(match[1]);
       const unite = match[2].toLowerCase();
       
-      // Normaliser les unités
       const uniteNormalisee = {
         'g': 'g', 'kg': 'kg',
         'ml': 'ml', 'cl': 'cl', 'l': 'L',
@@ -2089,13 +2102,12 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
       return { unite: uniteNormalisee, quantiteBase };
     }
     
-    // Si pas de nombre, c'est une unité simple
-    const uniteSimple = uniteAchat.toLowerCase();
+    // Cas 3: Unité simple ("kg", "g", "L")
     const uniteNormalisee = {
       'g': 'g', 'kg': 'kg',
       'ml': 'ml', 'cl': 'cl', 'l': 'L',
       'unite': 'unité', 'piece': 'pièce', 'pce': 'pièce'
-    }[uniteSimple] || 'kg';
+    }[uniteStr] || 'kg';
     
     return { unite: uniteNormalisee, quantiteBase: 1 };
   };
