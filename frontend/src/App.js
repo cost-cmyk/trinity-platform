@@ -2654,7 +2654,7 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                 label="Famille"
                 value={form.famille}
                 onChange={(v) => setForm({ ...form, famille: v })}
-                options={familles}
+                options={famillesDisponibles.length > 0 ? famillesDisponibles : familles}
                 placeholder={form.restaurant_id ? "Sélectionner" : "Sélectionnez d'abord un restaurant"}
                 disabled={!form.restaurant_id}
               />
