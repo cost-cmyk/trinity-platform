@@ -443,3 +443,57 @@ agent_communication:
       - Modal opened with empty restaurant selection
       - Restaurant dropdown with available options
       - Product search disabled with message "Sélectionnez d'abord un restaurant"
+  - agent: "testing"
+    message: |
+      ❌❌❌ CRITICAL REGRESSION - BUG #1 BROKEN AGAIN (2026-02-28)
+      
+      User requested detailed testing of Bug #3 (Calcul de Coût) with console log analysis.
+      During the test setup, I discovered that Bug #1 has REGRESSED - it is NO LONGER working.
+      
+      **TEST RESULTS:**
+      
+      ❌ BUG #1: RÉGRESSION CONFIRMÉE
+      - Le onChange du Select Restaurant NE FONCTIONNE PLUS
+      - Aucun des logs attendus n'apparaît (🏪, 📞, 📡, ✅)
+      - L'API /restaurants/{id}/familles N'EST PAS appelée
+      - Le champ de recherche produit reste DÉSACTIVÉ
+      - Le select affiche toujours "Sélectionner" après tentative de sélection
+      
+      ❓ BUG #2: NON TESTÉ (bloqué par Bug #1)
+      
+      ❓ BUG #3: NON TESTÉ (bloqué par Bug #1)
+      
+      **ROOT CAUSE INVESTIGATION:**
+      
+      React Hydration Error détecté:
+      ```
+      In HTML, <span> cannot be a child of <select>.
+      This will cause a hydration error.
+      ```
+      
+      Cette erreur d'hydration empêche React d'attacher correctement les event handlers au select.
+      Le DOM existe et peut être manipulé, mais le système d'événements synthétiques de React est cassé.
+      
+      **TESTS EFFECTUÉS:**
+      1. Sélection via Playwright select_option() → ÉCHEC
+      2. Sélection via JavaScript (set value + dispatch native events) → ÉCHEC
+      3. Sélection via JavaScript (set value + dispatch React synthetic events) → ÉCHEC
+      
+      Dans tous les cas:
+      - La valeur du select est modifiée dans le DOM
+      - Les événements natifs sont déclenchés
+      - Le composant se re-render (logs 👨‍👩‍👧‍👦 apparaissent)
+      - MAIS la fonction onChange callback N'EST JAMAIS EXÉCUTÉE
+      
+      **IMPACT:**
+      - Bug #1 bloque complètement les tests de Bug #2 et Bug #3
+      - Le formulaire Fiche Technique est inutilisable
+      - stuck_count de Bug #1 incrémenté à 2
+      
+      **ACTIONS REQUISES (PRIORITÉ CRITIQUE):**
+      1. Investiguer et corriger l'erreur d'hydration React (<span> wrapping <select>)
+      2. Vérifier que le Select component est correctement utilisé (pas de wrapper invalide)
+      3. Tester manuellement dans le navigateur pour confirmer le bug
+      4. Une fois Bug #1 corrigé, re-tester Bug #2 et Bug #3
+      
+      **NOTE:** Le statut précédent "working: true" pour Bug #1 était incorrect ou la correction a été perdue/annulée.
