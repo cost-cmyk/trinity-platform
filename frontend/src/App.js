@@ -2667,7 +2667,9 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                 label="Restaurant *"
                 value={form.restaurant_id}
                 onChange={(v) => {
+                  console.log("🏪 Changement restaurant sélectionné:", v);
                   setForm({ ...form, restaurant_id: v, famille: "" });
+                  console.log("📞 Appel direct loadFamilles depuis onChange");
                   loadFamilles(v);
                 }}
                 options={restaurants.map(r => ({ value: r.id, label: r.nom }))}
