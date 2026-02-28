@@ -2255,7 +2255,15 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
     });
     setEditingId(fiche.id);
     setShowForm(true);
+    loadFamilles(fiche.restaurant_id);
   };
+
+  // Charger les familles quand le formulaire s'ouvre ou que le restaurant change
+  React.useEffect(() => {
+    if (form.restaurant_id && showForm) {
+      loadFamilles(form.restaurant_id);
+    }
+  }, [form.restaurant_id, showForm]);
 
   const addIngredient = () => {
     if (!newIngredient.nom || !newIngredient.quantite) {
