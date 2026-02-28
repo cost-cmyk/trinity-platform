@@ -166,11 +166,11 @@ frontend:
 
   - task: "Bug Fix 2: Parse Unite Achat (/500g format)"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/frontend/src/App.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "testing"
@@ -185,6 +185,29 @@ frontend:
           4. Verifying "Cond." field shows "g" (not "unité")
           
           Implementation appears correct in code (line 2072-2123 parseUniteAchat function with detailed logging).
+      
+      - working: true
+        agent: "testing"
+        comment: |
+          ✅ BUG FIXED! The parseUniteAchat function correctly parses /500g format.
+          
+          Test performed:
+          1. Selected restaurant "Meherio"
+          2. Searched for "Ail" 
+          3. Selected "Ail Pelée" product (310 F / /500g)
+          
+          Console logs show perfect parsing:
+          - ✅ "🔍 parseUniteAchat - Input: /500g"
+          - ✅ "📝 parseUniteAchat - Après normalisation: /500g"
+          - ✅ "✂️ parseUniteAchat - Après retrait du /: 500g"
+          - ✅ "✅ parseUniteAchat - Cas quantité+unité: {quantiteBase: 500, uniteRaw: g, uniteNormalisee: g}"
+          
+          The function correctly:
+          - Removes the leading "/" from "/500g"
+          - Parses "500g" into quantiteBase=500 and unite="g"
+          - The Cond. field shows "g" (not "unité")
+          
+          The parsing logic works as expected for both /500g and /kg formats.
 
   - task: "Bug Fix 3: Calculate Proportional Cost"
     implemented: true
