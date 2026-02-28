@@ -279,9 +279,8 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Bug Fix 1: Restaurant Selection Triggers Famille Loading"
-  stuck_tasks:
-    - "Bug Fix 1: Restaurant Selection Triggers Famille Loading"
+    - "Bug Fix 3: Calculate Proportional Cost"
+  stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
