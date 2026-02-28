@@ -2295,10 +2295,14 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
 
   // Charger les familles UNIQUEMENT quand le restaurant change (pas à chaque render)
   React.useEffect(() => {
+    console.log("🔄 useEffect Familles - Déclenché, restaurant_id:", form.restaurant_id);
+    console.log("🔄 useEffect Familles - famillesDisponibles actuelles:", famillesDisponibles);
+    
     if (form.restaurant_id) {
-      console.log("🔄 useEffect: Chargement familles pour", form.restaurant_id);
+      console.log("✅ useEffect Familles - Appel loadFamilles avec:", form.restaurant_id);
       loadFamilles(form.restaurant_id);
     } else {
+      console.log("⚠️ useEffect Familles - Pas de restaurant, reset aux familles par défaut");
       setFamillesDisponibles(["Entrées", "Plats", "Desserts", "Boissons", "Préparations de base", "Sauces"]);
     }
   }, [form.restaurant_id]); // Uniquement quand restaurant_id change
