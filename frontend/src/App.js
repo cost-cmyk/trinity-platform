@@ -2978,10 +2978,20 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                                 const prixUnitaire = parseFloat(newIngredient.prix_unitaire);
                                 const qteBase = newIngredient.quantite_base_achat;
                                 
+                                console.log("💵 Preview Coût - Calcul:", {
+                                  qteDemandee,
+                                  prixUnitaire,
+                                  qteBase,
+                                  formule: `(${qteDemandee} / ${qteBase}) * ${prixUnitaire}`
+                                });
+                                
                                 // Le prix est pour qteBase unités
                                 // Ex: 310 F pour 500g → si on veut 500g, coût = 310 F
                                 //                      → si on veut 250g, coût = 155 F
                                 const coutCalcule = (qteDemandee / qteBase) * prixUnitaire;
+                                
+                                console.log("💵 Preview Coût - Résultat:", coutCalcule, "F");
+                                
                                 return Math.round(coutCalcule);
                               })()
                             : "—"
