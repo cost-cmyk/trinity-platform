@@ -2822,8 +2822,17 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                       const value = e.target.value;
                       console.log("📝 Input onChange:", value);
                       setAchatsSearch(value);
-                      // Appel immédiat sans condition
-                      searchAchats(value);
+                      
+                      // Clear previous timeout
+                      if (searchTimeoutRef.current) {
+                        clearTimeout(searchTimeoutRef.current);
+                      }
+                      
+                      // Set new timeout (debounce 400ms)
+                      searchTimeoutRef.current = setTimeout(() => {
+                        console.log("⏱️ Debounce terminé, appel searchAchats");
+                        searchAchats(value);
+                      }, 400);
                     }}
                     placeholder="Rechercher un produit..."
                     className="trinity-input"
