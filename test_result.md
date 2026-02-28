@@ -111,9 +111,9 @@ user_problem_statement: |
 frontend:
   - task: "Bug Fix 1: Restaurant Selection Triggers Famille Loading"
     implemented: true
-    working: false
+    working: true
     file: "/app/frontend/src/App.js"
-    stuck_count: 1
+    stuck_count: 0
     priority: "high"
     needs_retesting: false
     status_history:
@@ -145,6 +145,24 @@ frontend:
           
           This prevents testing of Bug #2 and Bug #3 as product search requires a restaurant to be selected first.
           The search input shows "Sélectionnez d'abord un restaurant" and is disabled.
+      
+      - working: true
+        agent: "testing"
+        comment: |
+          ✅ BUG FIXED! The Select component fix for the disabled prop has resolved the onChange issue.
+          
+          Test performed: Selected restaurant "Meherio" from the dropdown
+          
+          Results - ALL expected logs appeared:
+          - ✅ "🏪 Changement restaurant sélectionné: 27c9ee6f-1449-4326-b891-5cf0d21f5881"
+          - ✅ "📞 Appel direct loadFamilles depuis onChange"
+          - ✅ "📡 loadFamilles - Appel API: https://.../api/restaurants/{id}/familles"
+          - ✅ "✅ loadFamilles - Réponse API: [Boissons, Desserts, Entrées, Plats, Préparations de base, Sauces]"
+          - ✅ API call to /restaurants/{id}/familles returned 200 OK
+          - ✅ famillesDisponibles updated with 6 familles from the API
+          - ✅ Famille dropdown is now enabled and shows the loaded families
+          
+          The onChange handler is now firing correctly and the famille loading flow works as expected.
 
   - task: "Bug Fix 2: Parse Unite Achat (/500g format)"
     implemented: true
