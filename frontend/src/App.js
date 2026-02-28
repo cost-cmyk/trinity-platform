@@ -2997,8 +2997,15 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                       <div className="col-span-4">
                         <label className="block text-xs text-muted-foreground mb-1">Coût portion (F)</label>
                         <div className="trinity-input text-sm bg-secondary/50 cursor-not-allowed font-mono">
-                          {newIngredient.quantite && newIngredient.prix_unitaire && newIngredient.quantite_base_achat
-                            ? (() => {
+                          {(() => {
+                            console.log("💵 Preview - État newIngredient:", {
+                              quantite: newIngredient.quantite,
+                              prix_unitaire: newIngredient.prix_unitaire,
+                              quantite_base_achat: newIngredient.quantite_base_achat,
+                              condition: !!(newIngredient.quantite && newIngredient.prix_unitaire && newIngredient.quantite_base_achat)
+                            });
+                            
+                            if (newIngredient.quantite && newIngredient.prix_unitaire && newIngredient.quantite_base_achat) {
                                 const qteDemandee = parseFloat(newIngredient.quantite);
                                 const prixUnitaire = parseFloat(newIngredient.prix_unitaire);
                                 const qteBase = newIngredient.quantite_base_achat;
@@ -3018,9 +3025,10 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                                 console.log("💵 Preview Coût - Résultat:", coutCalcule, "F");
                                 
                                 return Math.round(coutCalcule);
-                              })()
-                            : "—"
-                          }
+                            } else {
+                              return "—";
+                            }
+                          })()}
                         </div>
                       </div>
                       <div className="col-span-2">
