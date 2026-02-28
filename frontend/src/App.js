@@ -2595,7 +2595,10 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
               <Select
                 label="Restaurant *"
                 value={form.restaurant_id}
-                onChange={(v) => setForm({ ...form, restaurant_id: v })}
+                onChange={(v) => {
+                  setForm({ ...form, restaurant_id: v, famille: "" });
+                  loadFamilles(v);
+                }}
                 options={restaurants.map(r => ({ value: r.id, label: r.nom }))}
                 placeholder="Sélectionner"
               />
