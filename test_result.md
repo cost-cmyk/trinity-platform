@@ -111,9 +111,9 @@ user_problem_statement: |
 frontend:
   - task: "Bug Fix 1: Restaurant Selection Triggers Famille Loading"
     implemented: true
-    working: true
+    working: false
     file: "/app/frontend/src/App.js"
-    stuck_count: 0
+    stuck_count: 2
     priority: "high"
     needs_retesting: false
     status_history:
@@ -163,6 +163,44 @@ frontend:
           - ✅ Famille dropdown is now enabled and shows the loaded families
           
           The onChange handler is now firing correctly and the famille loading flow works as expected.
+      
+      - working: false
+        agent: "testing"
+        comment: |
+          ❌ BUG REGRESSION - onChange handler NOT firing again (2026-02-28)
+          
+          User requested detailed testing of Bug #3 with console log analysis.
+          During testing, discovered that Bug #1 has regressed - the onChange handler is NOT working.
+          
+          Test performed:
+          1. Opened "Nouvelle Fiche" modal
+          2. Attempted to select restaurant "Meherio" via Playwright select_option()
+          3. Attempted to trigger onChange via JavaScript (setting select.value + dispatching native & React events)
+          
+          Results:
+          - ❌ NO console log "🏪 Changement restaurant sélectionné:" appeared
+          - ❌ NO console log "📞 Appel direct loadFamilles depuis onChange" appeared
+          - ❌ NO API call to /api/restaurants/{id}/familles was made
+          - ❌ Product search input remains DISABLED with message "Sélectionnez d'abord un restaurant"
+          - ❌ Restaurant select still shows "Sélectionner" (not "Meherio")
+          
+          Root cause investigation:
+          React hydration error detected in console:
+          "In HTML, <span> cannot be a child of <select>. This will cause a hydration error."
+          
+          This hydration mismatch prevents React from properly attaching event handlers to the select element.
+          The DOM exists and can be manipulated, but React's synthetic event system is broken.
+          
+          Evidence from logs:
+          - JavaScript successfully set select.value to restaurant ID
+          - Native change events were dispatched
+          - React synthetic events (input + change) were dispatched
+          - Component re-rendered (👨‍👩‍👧‍👦 logs appeared)
+          - BUT the onChange callback function NEVER executed
+          
+          This completely blocks testing of Bug #2 and Bug #3, as they require a restaurant to be selected first.
+          
+          CRITICAL: The previous "working: true" status was incorrect or the fix has been lost/reverted.
 
   - task: "Bug Fix 2: Parse Unite Achat (/500g format)"
     implemented: true
