@@ -269,8 +269,14 @@ const Select = ({ label, value, onChange, options, placeholder = "Sélectionner.
   const handleChange = (e) => {
     const newValue = e.target.value;
     console.log("🔄 Select handleChange déclenché, valeur:", newValue);
+    console.log("🔍 onChange exists?", !!onChange);
+    console.log("🔍 onChange type:", typeof onChange);
     if (onChange) {
+      console.log("🚀 About to call onChange with:", newValue);
       onChange(newValue);
+      console.log("✅ onChange called successfully");
+    } else {
+      console.log("❌ onChange is falsy!");
     }
   };
   
