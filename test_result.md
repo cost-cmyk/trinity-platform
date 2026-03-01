@@ -301,6 +301,94 @@ frontend:
           - stuck_count incremented to 3
           
           PRIORITY: CRITICAL - This must be fixed before any other testing can proceed.
+      
+      - working: false
+        agent: "testing"
+        comment: |
+          ❌ CRITICAL BUG STILL NOT FIXED - useCallback removed but onChange STILL not executing (2026-03-01)
+          
+          User requested "TEST FINAL ULTIME" after main agent claimed to have removed the useCallback
+          that caused the stale closure issue.
+          
+          CODE VERIFICATION:
+          ✅ Confirmed: useCallback HAS been removed from Select component (lines 268-275)
+          ✅ Confirmed: handleChange is now a normal function (not memoized)
+          
+          TEST PERFORMED:
+          1. Opened "Nouvelle Fiche" modal
+          2. Selected restaurant "Meherio" (ID: 27c9ee6f-1449-4326-b891-5cf0d21f5881)
+          3. Monitored console logs and network requests
+          
+          RESULTS:
+          ✅ Select component's handleChange IS being called:
+             - Log appeared: "🔄 Select handleChange déclenché, valeur: 27c9ee6f-1449-4326-b891-5cf0d21f5881"
+          
+          ❌ BUT parent's onChange callback is STILL NOT executed:
+             - NO log "🏪 Changement restaurant sélectionné:"
+             - NO log "📞 Appel direct loadFamilles depuis onChange"
+             - NO log "📡 loadFamilles - Appel API:"
+             - NO API call to /api/restaurants/{id}/familles
+             - Famille dropdown shows only 2 options (default fallback, not from API)
+          
+          ROOT CAUSE ANALYSIS:
+          
+          The Select component (lines 269-275) executes:
+          ```javascript
+          const handleChange = (e) => {
+            const newValue = e.target.value;
+            console.log("🔄 Select handleChange déclenché, valeur:", newValue); // ← THIS EXECUTES
+            if (onChange) {
+              onChange(newValue);  // ← THIS DOES NOT EXECUTE THE PARENT FUNCTION
+            }
+          };
+          ```
+          
+          Evidence shows:
+          1. handleChange function IS called (log appears)
+          2. The if(onChange) check must pass (otherwise nothing would happen)
+          3. onChange(newValue) is called BUT the parent function body NEVER executes
+          
+          NEW ROOT CAUSE IDENTIFIED: REACT HYDRATION ERROR
+          
+          Console shows critical React errors:
+          ```
+          "In HTML, <span> cannot be a child of <select>. This will cause a hydration error."
+          "In HTML, <span> cannot be a child of <option>. This will cause a hydration error."
+          ```
+          
+          These hydration errors indicate React's development tools or error boundaries are wrapping
+          elements with <span> tags, creating invalid HTML. When React hydration fails, the synthetic
+          event system breaks, causing event handlers to detach from their callbacks.
+          
+          SOLUTION REQUIRED:
+          
+          The issue is NOT with useCallback or function references. The issue is that React's hydration
+          is failing, which breaks the event system. Need to investigate:
+          
+          1. **Check for React development tools interference:**
+             - The error shows x-file-name, x-line-number, x-component attributes
+             - These look like React DevTools or a development wrapper adding markup
+             - These attributes/wrappers are injecting <span> elements into invalid locations
+          
+          2. **Possible causes:**
+             - React.StrictMode wrapping
+             - Development error boundaries adding markup
+             - Server-side rendering mismatch (if SSR is used)
+             - Third-party React tools injecting elements
+          
+          3. **Immediate fix options:**
+             - Remove React.StrictMode if present in index.js
+             - Disable React DevTools during testing
+             - Check for any wrapper components adding development markup
+             - Ensure production build doesn't have these issues
+          
+          IMPACT:
+          - Bug #1 completely blocks testing of Bug #2 and Bug #3
+          - The form is unusable - restaurant selection doesn't work
+          - stuck_count incremented to 4
+          - This is NOT a code logic issue but a React runtime/hydration issue
+          
+          PRIORITY: CRITICAL - The onChange logic is correct, but React's event system is broken due to hydration errors.
   - task: "Bug Fix 2: Parse Unite Achat (/500g format)"
     implemented: true
     working: true
