@@ -903,3 +903,41 @@ agent_communication:
       Ce n'est PAS un bug de logique de code.
       C'est un bug d'environnement de développement / d'outils React qui casse l'event system.
       Le code onChange est correct mais React ne peut pas l'exécuter à cause de l'hydration cassée.
+      
+      **UPDATE - ROOT CAUSE CONFIRMÉE:**
+      
+      Trouvé la source des attributs x-file-name qui causent l'erreur d'hydration:
+      
+      Fichier: /app/frontend/craco.config.js
+      Ligne 12: `enableVisualEdits: isDevServer`
+      Lignes 19-22: charge le plugin visual-edits avec babel-metadata-plugin
+      Lignes 74-78: active le plugin Babel qui injecte les métadonnées
+      
+      Ce plugin Babel ajoute des attributs (x-file-name, x-line-number, x-component) à chaque
+      élément React, ce qui crée des <span> wrappers dans des endroits invalides comme
+      <select> et <option>, causant les erreurs d'hydration React.
+      
+      **SOLUTION IMMÉDIATE:**
+      
+      Désactiver temporairement le visual edits plugin:
+      
+      Option 1: Modifier craco.config.js ligne 12:
+      ```javascript
+      enableVisualEdits: false, // Désactiver temporairement
+      ```
+      
+      Option 2: Ajouter variable d'environnement dans .env:
+      ```
+      DISABLE_VISUAL_EDITS=true
+      ```
+      puis modifier craco.config.js ligne 12:
+      ```javascript
+      enableVisualEdits: isDevServer && process.env.DISABLE_VISUAL_EDITS !== "true",
+      ```
+      
+      Après modification, redémarrer le serveur frontend:
+      ```bash
+      sudo supervisorctl restart frontend
+      ```
+      
+      Une fois le visual edits désactivé, les 3 bugs doivent fonctionner correctement.
