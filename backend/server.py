@@ -195,8 +195,11 @@ class VenteBase(BaseModel):
     quantite: int
     prix_unitaire: float
     ca_ttc: float
+    ca_ht: Optional[float] = 0  # NOUVEAU
     remise: float = 0
     is_food: bool = True
+    famille: Optional[str] = ""  # NOUVEAU
+    code_pro: Optional[str] = ""  # NOUVEAU
     import_id: Optional[str] = None
     exclu: bool = False
     annotation: Optional[str] = ""
