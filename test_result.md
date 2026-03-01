@@ -456,6 +456,10 @@ test_plan:
     - "Bug Fix 1: Restaurant Selection Triggers Famille Loading"
   test_all: false
   test_priority: "stuck_first"
+  notes: |
+    Bug #1 has been stuck 3 times now. The issue is clearly identified:
+    useCallback with [onChange] dependency causes stale closure problem.
+    Main agent should implement one of the 3 solutions provided in status_history.
 
 agent_communication:
   - agent: "testing"
