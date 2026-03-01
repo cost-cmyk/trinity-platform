@@ -991,13 +991,28 @@ def parse_xlsx_file(file_content: bytes, filename: str) -> List[dict]:
                     if any(kw in famille or kw in designation.lower() for kw in boisson_keywords):
                         is_food = False
                 
+                # Extraire la famille si disponible
+                famille_finale = ""
+                famille_col = col_mapping.get('famille')
+                if famille_col is not None and famille_col < len(row) and row[famille_col]:
+                    famille_finale = str(row[famille_col]).strip()
+                
+                # Extraire le code produit si disponible
+                code_pro = ""
+                code_col = col_mapping.get('code_pro')
+                if code_col is not None and code_col < len(row) and row[code_col]:
+                    code_pro = str(row[code_col]).strip()
+                
                 ventes.append({
                     'produit_nom': designation,
                     'quantite': int(quantite) if quantite else 1,
                     'prix_unitaire': prix_unitaire,
                     'ca_ttc': ca_ttc,
+                    'ca_ht': ca_ht,  # Ajouter CA HT
                     'remise': remise,
                     'is_food': is_food,
+                    'famille': famille_finale,  # NOUVEAU
+                    'code_pro': code_pro,  # NOUVEAU
                     'remise_negative_corrigee': remise_negative
                 })
                 
