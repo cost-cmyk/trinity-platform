@@ -2941,26 +2941,38 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                           key={idx}
                           type="button"
                           onClick={() => {
-                            console.log("🛒 Sélection achat:", {
-                              produit: achat.produit,
-                              unite_brute: achat.unite,
-                              prix_unitaire: achat.prix_unitaire
-                            });
+                            console.log("🛒 Sélection achat - Produit brut:", achat.produit);
                             
-                            const { unite, quantiteBase } = parseUniteAchat(achat.unite);
+                            // NOUVEAU : Extraire l'unité DU NOM du produit après le "/"
+                            let nomProduit = achat.produit;
+                            let uniteExtraite = achat.unite || "";
+                            
+                            // Si le nom contient "/", c'est que l'unité est dans le nom
+                            if (achat.produit && achat.produit.includes('/')) {
+                              const parts = achat.produit.split('/');
+                              nomProduit = parts[0].trim(); // Ex: "AIL FILET"
+                              uniteExtraite = '/' + parts[1].trim(); // Ex: "/500g"
+                              console.log("📦 Extraction depuis nom:", {
+                                nomProduit,
+                                uniteExtraite
+                              });
+                            }
+                            
+                            console.log("🔍 Parsing unité:", uniteExtraite);
+                            const { unite, quantiteBase } = parseUniteAchat(uniteExtraite);
                             
                             console.log("✅ Après parsing:", { unite, quantiteBase });
                             
                             const newIngData = {
-                              nom: achat.produit,
+                              nom: nomProduit, // Nom sans l'unité
                               quantite: "",
                               unite: unite,
                               prix_unitaire: achat.prix_unitaire.toString(),
                               type_ingredient: "achat",
                               fournisseur: achat.fournisseur,
                               date_achat: achat.date_achat,
-                              quantite_base_achat: quantiteBase, // Quantité de base de l'unité d'achat
-                              unite_achat_originale: achat.unite // Pour affichage
+                              quantite_base_achat: quantiteBase,
+                              unite_achat_originale: uniteExtraite
                             };
                             
                             console.log("✅ newIngredient DATA à setter:", newIngData);
