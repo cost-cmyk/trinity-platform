@@ -266,13 +266,13 @@ const CoutTheoriqueSection = ({ restaurantId, date, caFood, caDrink }) => {
 
 
 const Select = ({ label, value, onChange, options, placeholder = "Sélectionner...", className = "", disabled = false }) => {
-  const handleChange = React.useCallback((e) => {
+  const handleChange = (e) => {
     const newValue = e.target.value;
     console.log("🔄 Select handleChange déclenché, valeur:", newValue);
     if (onChange) {
       onChange(newValue);
     }
-  }, [onChange]);
+  };
   
   return (
     <div className={`space-y-1 ${className}`}>
@@ -280,7 +280,6 @@ const Select = ({ label, value, onChange, options, placeholder = "Sélectionner.
       <select
         value={value}
         onChange={handleChange}
-        onInput={handleChange}
         className="trinity-input"
         disabled={disabled}
       >
