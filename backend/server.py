@@ -1893,16 +1893,17 @@ async def get_categories():
 
 @api_router.get("/restaurants/{restaurant_id}/familles")
 async def get_familles_by_restaurant(restaurant_id: str):
-    """Récupérer les familles uniques d'un restaurant depuis les produits existants"""
+    """Récupérer les familles uniques d'un restaurant depuis les ventes"""
     try:
-        # Récupérer les familles uniques depuis les produits
-        familles_produits = await db.produits.distinct("famille", {"restaurant_id": restaurant_id})
+        # Récupérer les familles uniques depuis les VENTES (collection principale)
+        familles_ventes = await db.ventes.distinct("famille", {"restaurant_id": restaurant_id})
         
-        # Récupérer les familles depuis les fiches techniques
+        # Récupérer aussi depuis les produits et fiches comme fallback
+        familles_produits = await db.produits.distinct("famille", {"restaurant_id": restaurant_id})
         familles_fiches = await db.fiches_techniques.distinct("famille", {"restaurant_id": restaurant_id})
         
-        # Combiner et dédupliquer
-        familles = list(set([f for f in familles_produits + familles_fiches if f]))
+        # Combiner et dédupliquer (priorité aux ventes)
+        familles = list(set([f for f in familles_ventes + familles_produits + familles_fiches if f]))
         
         # Si vide, retourner des familles par défaut
         if not familles:
