@@ -2787,10 +2787,11 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                 <div className="trinity-input bg-secondary/50 cursor-not-allowed text-sm">
                   <span className="text-muted-foreground">
                     {form.type_fiche === "produit_fini" ? (
-                      // Pour produit fini : afficher Food cost %
+                      // Pour produit fini : afficher Food cost % (calculé sur HT)
                       <>
-                        {calculateCosts().coutPortion > 0 ? `${fmtPrice(calculateCosts().coutPortion)} • ` : ""}
-                        {calculateCosts().foodCost > 0 ? fmtPct(calculateCosts().foodCost) : "—"}
+                        {calculateCosts().coutPortion > 0 ? `Coût: ${fmtPrice(calculateCosts().coutPortion)} • ` : ""}
+                        {calculateCosts().prixVenteHT > 0 ? `PV HT: ${fmtPrice(calculateCosts().prixVenteHT)} • ` : ""}
+                        {calculateCosts().foodCost > 0 ? `${(form.is_food ? "Food" : "Bev")} Cost: ${fmtPct(calculateCosts().foodCost)}` : "—"}
                       </>
                     ) : (
                       // Pour préparation de base : afficher coût au kg ou L
