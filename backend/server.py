@@ -727,8 +727,9 @@ def parse_xls_file(file_content: bytes, filename: str) -> List[dict]:
             temp_mapping = {}
             
             for col_idx, cell_value in enumerate(row_values):
+                cell_lower = cell_value.lower()  # Comparaison case-insensitive
                 for key, aliases in expected_cols.items():
-                    if any(alias in cell_value for alias in aliases):
+                    if any(alias in cell_lower for alias in aliases):
                         if key not in temp_mapping:  # Garder la première occurrence
                             temp_mapping[key] = col_idx
                         break
