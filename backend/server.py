@@ -1265,8 +1265,11 @@ async def upload_and_import_file(
             "quantite": v["quantite"],
             "prix_unitaire": v["prix_unitaire"],
             "ca_ttc": v["ca_ttc"],
+            "ca_ht": v.get("ca_ht", 0),  # NOUVEAU
             "remise": v["remise"],
             "is_food": v["is_food"],
+            "famille": v.get("famille", ""),  # NOUVEAU
+            "code_pro": v.get("code_pro", ""),  # NOUVEAU
             "import_id": import_id,
             "exclu": False,
             "annotation": "",
