@@ -2409,9 +2409,16 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
   const calculateCosts = () => {
     const coutTotal = form.ingredients.reduce((sum, ing) => sum + (ing.cout_ligne || 0), 0);
     const nbPortions = parseInt(form.nb_portions) || 1;
-    const prixVente = parseFloat(form.prix_vente) || 0;
+    const prixVenteTTC = parseFloat(form.prix_vente) || 0;
+    const tvaPct = parseFloat(form.tva_pct) || 0;
+    
+    // Calculer le prix HT à partir du TTC
+    const prixVenteHT = tvaPct > 0 ? prixVenteTTC / (1 + tvaPct / 100) : prixVenteTTC;
+    
     const coutPortion = coutTotal / nbPortions;
-    const foodCost = prixVente > 0 ? (coutPortion / prixVente) * 100 : 0;
+    
+    // Food Cost calculé sur le prix HT
+    const foodCost = prixVenteHT > 0 ? (coutPortion / prixVenteHT) * 100 : 0;
     
     // Calculer le poids total (uniquement pour les ingrédients avec unité de poids)
     // Exclure "unité" et "pièce" car ce ne sont pas des unités de poids
@@ -2425,7 +2432,7 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
     // Pour les préparations de base, calculer le coût au kg ou au L
     const coutParKg = poidsTotal > 0 ? (coutTotal / poidsTotal) * 1000 : 0;
     
-    return { coutTotal, coutPortion, foodCost, poidsTotal, coutParKg };
+    return { coutTotal, coutPortion, foodCost, poidsTotal, coutParKg, prixVenteHT };
   };
 
   const handleSubmit = async () => {
