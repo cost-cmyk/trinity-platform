@@ -819,3 +819,87 @@ agent_communication:
       4. Une fois Bug #1 corrigé, re-tester Bug #2 et Bug #3
       
       **NOTE:** Le statut précédent "working: true" pour Bug #1 était incorrect ou la correction a été perdue/annulée.
+  
+  - agent: "testing"
+    message: |
+      ❌❌❌ BUG #1 STILL BROKEN - React Hydration Error Breaking onChange (2026-03-01)
+      
+      **TEST RESULTS - "TEST FINAL ULTIME" après suppression useCallback:**
+      
+      ❌ BUG #1: TOUJOURS CASSÉ (stuck_count: 4)
+      - ✅ Le Select handleChange EST appelé (log "🔄 Select handleChange" apparaît)
+      - ❌ MAIS le callback onChange du parent N'EST PAS exécuté
+      - ❌ Aucun log "🏪 Changement restaurant sélectionné"
+      - ❌ Aucun log "📞 Appel direct loadFamilles"
+      - ❌ Aucun appel API /restaurants/{id}/familles
+      - ❌ Le dropdown Famille n'affiche que 2 options (défaut, pas depuis API)
+      
+      ❓ BUG #2: NON TESTÉ (bloqué par Bug #1)
+      
+      ❓ BUG #3: NON TESTÉ (bloqué par Bug #1)
+      
+      **NOUVELLE ROOT CAUSE IDENTIFIÉE - ERREUR D'HYDRATION REACT:**
+      
+      Le problème N'EST PAS le code! Le code est correct:
+      - ✅ useCallback a été supprimé du Select component (lignes 268-275)
+      - ✅ handleChange est une fonction normale
+      - ✅ Le parent passe onChange correctement (lignes 2680-2685)
+      
+      Le VRAI problème: ERREURS D'HYDRATION REACT qui cassent le système d'événements:
+      
+      ```
+      "In HTML, <span> cannot be a child of <select>. This will cause a hydration error."
+      "In HTML, <span> cannot be a child of <option>. This will cause a hydration error."
+      ```
+      
+      Ces erreurs indiquent que React DevTools ou un wrapper de développement injecte des
+      éléments <span> dans des endroits invalides (à l'intérieur de <select> et <option>).
+      
+      Les attributs suspects dans l'erreur:
+      - x-file-name="App"
+      - x-line-number="286"
+      - x-component="option"
+      - x-id="App_286"
+      - x-dynamic="false"
+      
+      Ces attributs NE SONT PAS dans le code source! Ils sont injectés par un outil externe
+      (probablement React DevTools, Emergent Visual Editor, ou un wrapper de développement).
+      
+      **IMPACT DE L'HYDRATION ERROR:**
+      
+      Quand React échoue l'hydration, le système d'événements synthétiques se détache.
+      Résultat: handleChange est appelé (événement DOM natif) mais onChange(newValue) 
+      n'exécute pas la fonction du parent (événement synthétique cassé).
+      
+      **SOLUTIONS RECOMMANDÉES (par ordre de priorité):**
+      
+      **SOLUTION #1 (RECOMMANDÉE):** Supprimer l'outil qui injecte les attributs x-*
+      - Ces attributs semblent venir d'Emergent Visual Editor ou un outil similaire
+      - Désactiver temporairement pour tester
+      - Vérifier si l'app fonctionne en production build (sans dev tools)
+      
+      **SOLUTION #2:** Désactiver React.StrictMode
+      - Vérifier /app/frontend/src/index.js
+      - Retirer <React.StrictMode> si présent
+      
+      **SOLUTION #3:** Vérifier les wrappers React
+      - Chercher tout composant qui injecte des props ou wrappers
+      - Vérifier si il y a un ErrorBoundary ou DevTools actif
+      
+      **SOLUTION #4:** Tester en mode production
+      - Build production: `yarn build`
+      - Servir le build: les erreurs d'hydration dev disparaissent souvent en prod
+      
+      **ACTION IMMÉDIATE REQUISE:**
+      
+      1. Identifier l'outil qui injecte les attributs x-file-name, x-line-number, etc.
+      2. Désactiver temporairement cet outil
+      3. Re-tester le formulaire
+      4. Si ça fonctionne → l'outil dev est la cause
+      5. Si ça ne fonctionne pas → investiguer React.StrictMode et autres wrappers
+      
+      **PRIORITÉ: CRITIQUE**
+      
+      Ce n'est PAS un bug de logique de code.
+      C'est un bug d'environnement de développement / d'outils React qui casse l'event system.
+      Le code onChange est correct mais React ne peut pas l'exécuter à cause de l'hydration cassée.
