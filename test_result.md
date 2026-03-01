@@ -391,11 +391,11 @@ frontend:
           PRIORITY: CRITICAL - The onChange logic is correct, but React's event system is broken due to hydration errors.
   - task: "Bug Fix 2: Parse Unite Achat (/500g format)"
     implemented: true
-    working: true
+    working: "NA"
     file: "/app/frontend/src/App.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: "NA"
         agent: "testing"
