@@ -2713,13 +2713,22 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
               
               {/* Prix de vente uniquement pour "Produit fini" */}
               {form.type_fiche === "produit_fini" && (
-                <Input
-                  label="Prix de vente TTC (F)"
-                  type="number"
-                  value={form.prix_vente}
-                  onChange={(v) => setForm({ ...form, prix_vente: v })}
-                  placeholder="0"
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Prix de vente TTC (F)"
+                    type="number"
+                    value={form.prix_vente}
+                    onChange={(v) => setForm({ ...form, prix_vente: v })}
+                    placeholder="0"
+                  />
+                  <Input
+                    label="% TVA"
+                    type="number"
+                    value={form.tva_pct}
+                    onChange={(v) => setForm({ ...form, tva_pct: v })}
+                    placeholder="5"
+                  />
+                </div>
               )}
               
               {/* Toggle Nourriture/Boisson */}
