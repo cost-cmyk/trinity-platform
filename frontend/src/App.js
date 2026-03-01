@@ -265,24 +265,35 @@ const CoutTheoriqueSection = ({ restaurantId, date, caFood, caDrink }) => {
 };
 
 
-const Select = ({ label, value, onChange, options, placeholder = "Sélectionner...", className = "", disabled = false }) => (
-  <div className={`space-y-1 ${className}`}>
-    {label && <label className="text-sm text-muted-foreground">{label}</label>}
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="trinity-input"
-      disabled={disabled}
-    >
-      <option value="">{placeholder}</option>
-      {options.map((opt) => (
-        <option key={opt.value || opt} value={opt.value || opt}>
-          {opt.label || opt}
-        </option>
-      ))}
-    </select>
-  </div>
-);
+const Select = ({ label, value, onChange, options, placeholder = "Sélectionner...", className = "", disabled = false }) => {
+  const handleChange = React.useCallback((e) => {
+    const newValue = e.target.value;
+    console.log("🔄 Select handleChange déclenché, valeur:", newValue);
+    if (onChange) {
+      onChange(newValue);
+    }
+  }, [onChange]);
+  
+  return (
+    <div className={`space-y-1 ${className}`}>
+      {label && <label className="text-sm text-muted-foreground">{label}</label>}
+      <select
+        value={value}
+        onChange={handleChange}
+        onInput={handleChange}
+        className="trinity-input"
+        disabled={disabled}
+      >
+        <option value="">{placeholder}</option>
+        {options.map((opt) => (
+          <option key={opt.value || opt} value={opt.value || opt}>
+            {opt.label || opt}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+};
 
 const EmptyState = ({ icon: Icon = Package, title, description, action = null }) => (
   <div className="empty-state" data-testid="empty-state">
