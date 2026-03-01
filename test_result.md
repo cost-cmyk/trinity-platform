@@ -501,6 +501,94 @@ agent_communication:
       
       ✅✅✅ BUG #1: CORRIGÉ
       - Le onChange du Select Restaurant fonctionne maintenant correctement
+  - agent: "testing"
+    message: |
+      ❌❌❌ CRITICAL ROOT CAUSE IDENTIFIED - useCallback Stale Closure Problem (2026-03-01)
+      
+      **TEST RESULTS:**
+      
+      ❌ BUG #1: RÉGRESSION CONFIRMÉE (stuck_count: 3)
+      - Le Select component handleChange EST appelé (log "🔄 Select handleChange" apparaît)
+      - MAIS le callback onChange du parent N'EST PAS exécuté
+      - Aucun log "🏪 Changement restaurant sélectionné"
+      - Aucun log "📞 Appel direct loadFamilles"
+      - Aucun appel API /restaurants/{id}/familles
+      - Le dropdown Famille reste DÉSACTIVÉ
+      
+      ❓ BUG #2: NON TESTÉ (bloqué par Bug #1)
+      
+      ❓ BUG #3: NON TESTÉ (bloqué par Bug #1)
+      
+      **ROOT CAUSE - PROBLÈME DE CLOSURE STALE:**
+      
+      Le composant Select utilise useCallback avec [onChange] dans les dépendances:
+      ```javascript
+      const handleChange = React.useCallback((e) => {
+        console.log("🔄 Select handleChange déclenché");
+        if (onChange) {
+          onChange(newValue);  // ← PAS EXÉCUTÉ
+        }
+      }, [onChange]);  // ← PROBLÈME ICI
+      ```
+      
+      Le parent passe une fonction inline arrow qui change à chaque render:
+      ```javascript
+      onChange={(v) => {
+        console.log("🏪 Changement restaurant...");
+        loadFamilles(v);
+      }}
+      ```
+      
+      Résultat: useCallback capture une référence onChange STALE (obsolète) qui n'est plus valide
+      quand l'événement se déclenche. C'est pourquoi handleChange est appelé mais onChange(newValue)
+      ne fait rien.
+      
+      **3 SOLUTIONS RECOMMANDÉES (par ordre de préférence):**
+      
+      **SOLUTION #1 (RECOMMANDÉE):** Retirer onChange des dépendances useCallback
+      ```javascript
+      const handleChange = React.useCallback((e) => {
+        const newValue = e.target.value;
+        console.log("🔄 Select handleChange déclenché, valeur:", newValue);
+        if (onChange) {
+          onChange(newValue);
+        }
+      }, []); // ← Dépendances vides
+      ```
+      
+      **SOLUTION #2:** Utiliser un ref pour accéder au onChange le plus récent
+      ```javascript
+      const onChangeRef = React.useRef(onChange);
+      React.useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
+      
+      const handleChange = React.useCallback((e) => {
+        const newValue = e.target.value;
+        if (onChangeRef.current) {
+          onChangeRef.current(newValue);
+        }
+      }, []);
+      ```
+      
+      **SOLUTION #3 (LA PLUS SIMPLE):** Supprimer complètement useCallback
+      ```javascript
+      const handleChange = (e) => {
+        const newValue = e.target.value;
+        console.log("🔄 Select handleChange déclenché, valeur:", newValue);
+        if (onChange) {
+          onChange(newValue);
+        }
+      };
+      ```
+      
+      **IMPACT:**
+      - Bug critique qui bloque complètement l'utilisation du formulaire
+      - Empêche le test de Bug #2 et Bug #3
+      - stuck_count = 3, nécessite une correction immédiate
+      
+      **ACTION REQUISE:**
+      Implémenter une des 3 solutions ci-dessus dans le composant Select (lignes 268-284).
+      La Solution #3 est la plus simple et la plus fiable.
+
       - Tous les logs attendus apparaissent (🏪, 📞, 📡, ✅)
       - L'API /restaurants/{id}/familles est appelée et retourne 200 OK
       - 6 familles sont chargées depuis l'API
