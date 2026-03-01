@@ -705,12 +705,13 @@ def parse_xls_file(file_content: bytes, filename: str) -> List[dict]:
         
         # Colonnes attendues PSW - étendu pour le format réel
         expected_cols = {
+            'code_pro': ['code pro', 'code_pro', 'code produit', 'code article', 'référence', 'reference', 'ref'],
             'designation': ['désignation', 'designation', 'produit', 'article', 'libellé', 'libelle', 'nom'],
             'quantite': ['qté', 'qte', 'quantité', 'quantite', 'qty', 'nb', 'qté vendue', 'qte vendue'],
             'prix_unitaire': ['pu', 'p.u.', 'pu ttc', 'prix unitaire', 'prix unit', 'prix de vente unitaire', 'prix de vente'],
             'ca_ttc': ['ca ttc', 'ca  ttc', 'cattc', 'montant ttc', 'total ttc'],
             'ca_ht': ['ca ht', 'caht', 'montant ht'],
-            'remise': ['remise', 'rem', 'réduction', 'reduction', 'rabais', 'montant total de remise'],
+            'remise': ['remise', 'rem', 'réduction', 'reduction', 'rabais', 'montant total de remise', 'total de remise'],
             'famille': ['famille', 'catégorie', 'categorie', 'type', 'groupe'],
             'fournisseur': ['fournisseur', 'type produit']  # BOISSON ou NOURRITURE
         }
