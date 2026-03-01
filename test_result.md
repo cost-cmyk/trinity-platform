@@ -433,6 +433,27 @@ frontend:
           - The Cond. field shows "g" (not "unité")
           
           The parsing logic works as expected for both /500g and /kg formats.
+      
+      - working: "NA"
+        agent: "testing"
+        comment: |
+          ❌ NOT TESTED: Cannot test Bug #2 because Bug #1 has regressed again (2026-03-01)
+          
+          User requested "TEST FINAL ULTIME" of all 3 bugs after main agent removed useCallback.
+          
+          Test attempted but BLOCKED:
+          1. Opened "Nouvelle Fiche" modal
+          2. Selected restaurant "Meherio" - onChange did NOT fire (Bug #1 still broken)
+          3. Product search remains disabled with message "Sélectionnez d'abord un restaurant"
+          4. Cannot search for "Ail" or select "Ail Pelée"
+          
+          Result: BLOCKED at step 2 due to Bug #1 regression.
+          
+          The parseUniteAchat code (lines 2083-2133) appears correctly implemented with proper logging.
+          Once Bug #1 is fixed, this needs retesting.
+          
+          Previous test showed this was working (status_history working: true from earlier test).
+          Code has not changed, so this should still work once Bug #1 is resolved.
 
   - task: "Bug Fix 3: Calculate Proportional Cost"
     implemented: true
