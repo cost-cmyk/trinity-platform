@@ -2041,6 +2041,7 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
     is_food: true, // true=Nourriture, false=Boisson
     nb_portions: "1", 
     prix_vente: "", 
+    tva_pct: "5",  // NOUVEAU : % TVA par défaut 5%
     statut: "brouillon", 
     ingredients: [],
     linked_produit_ids: [], // Produits de la carte rattachés
