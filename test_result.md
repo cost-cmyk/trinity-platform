@@ -551,6 +551,28 @@ frontend:
           - Line 3008-3027: Performs calculation if all values present
           
           Once Bug #1 is fixed, Bug #3 needs full testing to verify if the calculation works correctly.
+      
+      - working: "NA"
+        agent: "testing"
+        comment: |
+          ❌ NOT TESTED: Cannot test Bug #3 because Bug #1 has regressed again (2026-03-01)
+          
+          User requested "TEST FINAL ULTIME" of all 3 bugs after main agent removed useCallback.
+          
+          Test attempted but BLOCKED:
+          1. Opened "Nouvelle Fiche" modal
+          2. Selected restaurant "Meherio" - onChange did NOT fire (Bug #1 still broken)
+          3. Product search remains disabled
+          4. Cannot search for "Ail Pelée" or enter quantity to test cost calculation
+          
+          Result: BLOCKED at step 2 due to Bug #1 regression.
+          
+          The cost calculation code (lines 3010-3041) appears correctly implemented with detailed logging.
+          Once Bug #1 is fixed, this needs comprehensive testing to verify:
+          - 100g of 310F/500g = 62F
+          - 100g of 2750F/kg = 275F
+          
+          The code logic looks correct, but cannot be tested until restaurant selection works.
 
 metadata:
   created_by: "testing_agent"
