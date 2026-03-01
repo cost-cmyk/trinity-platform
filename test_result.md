@@ -202,6 +202,105 @@ frontend:
           
           CRITICAL: The previous "working: true" status was incorrect or the fix has been lost/reverted.
 
+      
+      - working: false
+        agent: "testing"
+        comment: |
+          ❌ CRITICAL BUG CONFIRMED - useCallback Implementation Issue (2026-03-01)
+          
+          User requested comprehensive testing of all 3 bugs after main agent modified Select component 
+          to use useCallback and added onInput fallback.
+          
+          Test performed:
+          1. Opened "Nouvelle Fiche" modal
+          2. Selected restaurant "Meherio" (ID: 27c9ee6f-1449-4326-b891-5cf0d21f5881)
+          
+          Results:
+          ✅ Select component's handleChange IS being called (log appears twice):
+             - "🔄 Select handleChange déclenché, valeur: 27c9ee6f-1449-4326-b891-5cf0d21f5881"
+          
+          ❌ BUT the parent's onChange callback is NOT being executed:
+             - NO log "🏪 Changement restaurant sélectionné:"
+             - NO log "📞 Appel direct loadFamilles depuis onChange"
+             - NO log "📡 loadFamilles - Appel API:"
+             - NO API call to /api/restaurants/{id}/familles
+             - Famille dropdown remains DISABLED
+             - famillesDisponibles shows default 6 families (not from API)
+          
+          ROOT CAUSE IDENTIFIED:
+          
+          The Select component (line 269-275) uses useCallback with [onChange] dependency:
+          ```javascript
+          const handleChange = React.useCallback((e) => {
+            const newValue = e.target.value;
+            console.log("🔄 Select handleChange déclenché, valeur:", newValue);
+            if (onChange) {
+              onChange(newValue);  // ← This is NOT being called
+            }
+          }, [onChange]);
+          ```
+          
+          The parent component (line 2681-2686) passes an INLINE ARROW FUNCTION as onChange:
+          ```javascript
+          onChange={(v) => {
+            console.log("🏪 Changement restaurant sélectionné:", v);
+            setForm({ ...form, restaurant_id: v, famille: "" });
+            loadFamilles(v);
+          }}
+          ```
+          
+          Problem: Inline arrow functions create a NEW function reference on every render.
+          When useCallback has [onChange] dependency, it recreates the memoized function every time
+          the onChange prop changes. React's event system gets confused with stale closures.
+          
+          Evidence:
+          - handleChange is called (we see the log)
+          - But onChange(newValue) inside handleChange is NOT executed
+          - This means the onChange reference captured in the closure is stale/invalid
+          
+          SOLUTION OPTIONS:
+          
+          1. **Recommended:** Remove onChange from useCallback dependencies
+             ```javascript
+             const handleChange = React.useCallback((e) => {
+               const newValue = e.target.value;
+               console.log("🔄 Select handleChange déclenché, valeur:", newValue);
+               if (onChange) {
+                 onChange(newValue);
+               }
+             }, []); // ← Empty dependencies
+             ```
+          
+          2. **Alternative:** Use ref to access latest onChange without dependency
+             ```javascript
+             const onChangeRef = React.useRef(onChange);
+             React.useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
+             
+             const handleChange = React.useCallback((e) => {
+               const newValue = e.target.value;
+               if (onChangeRef.current) {
+                 onChangeRef.current(newValue);
+               }
+             }, []);
+             ```
+          
+          3. **Simplest:** Remove useCallback entirely and use normal function
+             ```javascript
+             const handleChange = (e) => {
+               const newValue = e.target.value;
+               console.log("🔄 Select handleChange déclenché, valeur:", newValue);
+               if (onChange) {
+                 onChange(newValue);
+               }
+             };
+             ```
+          
+          IMPACT:
+          - Bug #1 completely blocks testing of Bug #2 and Bug #3
+          - The form is unusable - cannot select restaurant
+          - stuck_count incremented to 3
+          
+          PRIORITY: CRITICAL - This must be fixed before any other testing can proceed.
   - task: "Bug Fix 2: Parse Unite Achat (/500g format)"
     implemented: true
     working: true
