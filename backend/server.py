@@ -214,8 +214,8 @@ class Vente(VenteBase):
 class ImportRecord(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    type: str  # ventes, achats, carte
-    restaurant_id: str
+    type: str  # ventes, achats, carte, budget
+    restaurant_id: Optional[str] = None  # Optionnel pour imports budget
     nom_fichier: str
     date_import: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     statut: str = "importé"  # en_attente, importé, erreur
