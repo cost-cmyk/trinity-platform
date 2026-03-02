@@ -3921,6 +3921,17 @@ const ImportModule = ({ restaurants, onRefresh }) => {
             <Package className="w-4 h-4 inline mr-2" />
             Achats Odoo
           </button>
+          <button
+            onClick={() => setActiveTab("budget")}
+            className={`px-4 py-2 font-medium transition-colors border-b-2 ${
+              activeTab === "budget"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <TrendingUp className="w-4 h-4 inline mr-2" />
+            Budget CA
+          </button>
         </div>
       </div>
       
