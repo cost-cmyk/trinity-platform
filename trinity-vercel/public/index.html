@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trinity Platform — Groupe Trinity</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Outfit', 'DM Sans', sans-serif; background: #060d1f; color: #cad8f0; overflow: hidden; }
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-track { background: #060d1f; }
+    ::-webkit-scrollbar-thumb { background: #1a3060; border-radius: 2px; }
+    .ni:hover { background: #0d1b3e !important; }
+    @keyframes fi { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .fa { animation: fi 0.25s ease; }
+    select { cursor: pointer; }
+    option { background: #0a1628; color: #cad8f0; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useMemo, useCallback, useEffect, createContext, useContext } = React;
+
+    // ═══════════════════════════════════════════════════════════════
+    // DATA
+    // ═══════════════════════════════════════════════════════════════
+    const RESTOS = [
+      { id:"r1", nom:"Laboratoire", type:"PRODUCTION", color:"#2dd4bf" },
+      { id:"r2", nom:"Urban Café", type:"RESTAURANT", color:"#818cf8" },
+      { id:"r3", nom:"Meherio", type:"RESTAURANT", color:"#34d399" },
+      { id:"r4", nom:"Instant Présent", type:"RESTAURANT", color:"#fbbf24" },
+      { id:"r5", nom:"Jimmy2", type:"RESTAURANT", color:"#f472b6" },
+      { id:"r6", nom:"Jimmy", type:"RESTAURANT", color:"#e879f9" },
+      { id:"r7", nom:"Urban Garden", type:"RESTAURANT", color:"#38bdf8" },
+      { id:"r8", nom:"Urban Fare Ute", type:"RESTAURANT", color:"#fb923c" },
+    ];
+
+    const VENTES = [
+      {rid:"r1",plat:"PAIN CHOCOLAT VAEARA'I",q:20,ca:1900,fam:"VIENNOISSERIES",food:true},
+      {rid:"r1",plat:"CROISSANT VAEARA'I",q:20,ca:1900,fam:"VIENNOISSERIES",food:true},
+      {rid:"r2",plat:"ENGLISH BOARD",q:13,ca:38350,fam:"BRUNCH SALÉ",food:true},
+      {rid:"r2",plat:"URBAN BRUNCH NOURR",q:14,ca:41300,fam:"FORMULE",food:true},
+      {rid:"r2",plat:"TOAST GUACAMOLE",q:14,ca:16200,fam:"BRUNCH SALÉ",food:true},
+      {rid:"r2",plat:"EGGS BENEDICT BACON",q:16,ca:18360,fam:"BRUNCH SALÉ",food:true},
+      {rid:"r2",plat:"CAPPUCCINO",q:13,ca:6000,fam:"CAFÉ",food:false},
+      {rid:"r2",plat:"AMERICANO",q:20,ca:5100,fam:"CAFÉ",food:false},
+      {rid:"r3",plat:"HINANO BLONDE 50CL",q:37,ca:20925,fam:"BIÈRE",food:false},
+      {rid:"r3",plat:"BOUILLABAISSE POLYNESIENNE",q:5,ca:19750,fam:"PLATS",food:true},
+      {rid:"r3",plat:"ENTRECOTE ANGUS",q:5,ca:12600,fam:"PLATS",food:true},
+      {rid:"r3",plat:"MOJITO",q:11,ca:13300,fam:"COCKTAILS",food:false},
+      {rid:"r3",plat:"ASSIETTE ASIATIQUE",q:5,ca:18900,fam:"TAPAS",food:true},
+      {rid:"r4",plat:"BRUNCH 5500",q:88,ca:460900,fam:"BANQUET",food:true},
+      {rid:"r4",plat:"MAGRET DE CANARD",q:10,ca:39500,fam:"TERRE",food:true},
+      {rid:"r4",plat:"FROZEN MARGARITA",q:17,ca:19950,fam:"COCKTAILS",food:false},
+      {rid:"r4",plat:"CHEESE BURGER",q:8,ca:19600,fam:"BURGERS",food:true},
+      {rid:"r5",plat:"NEMS CHA GIO",q:10,ca:16830,fam:"ENTRÉES",food:true},
+      {rid:"r5",plat:"POULET AU CITRON",q:10,ca:17500,fam:"POULET",food:true},
+      {rid:"r6",plat:"SOUPE WON TON",q:12,ca:15600,fam:"SOUPES",food:true},
+      {rid:"r6",plat:"CANARD LAQUÉ ENTIER",q:3,ca:14700,fam:"CANARD",food:true},
+      {rid:"r7",plat:"SALADE GARDEN SIGNATURE",q:18,ca:32400,fam:"SALADES",food:true},
+      {rid:"r7",plat:"BOWL POKE SAUMON",q:14,ca:28000,fam:"BOWLS",food:true},
+      {rid:"r8",plat:"FISH & CHIPS THON",q:15,ca:30000,fam:"PLATS",food:true},
+      {rid:"r8",plat:"CHEESEBURGER CLASSIQUE",q:20,ca:34000,fam:"BURGERS",food:true},
+    ];
+
+    const FICHES = [
+      {rid:"r1",plat:"PAIN CHOCOLAT VAEARA'I",pv:95,cout:28,food:true,fam:"VIENNOISSERIES",statut:"fait",ing:[{p:"Farine T55",q:"80g",cu:10},{p:"Beurre 82%",q:"30g",cu:11},{p:"Chocolat bâton",q:"2 pce",cu:9}]},
+      {rid:"r2",plat:"EGGS BENEDICT BACON",pv:1350,cout:420,food:true,fam:"BRUNCH SALÉ",statut:"fait",ing:[{p:"Œufs frais",q:"2 pce",cu:90},{p:"Bacon fumé",q:"60g",cu:210},{p:"Muffin anglais",q:"1 pce",cu:85}]},
+      {rid:"r2",plat:"ENGLISH BOARD",pv:2950,cout:885,food:true,fam:"BRUNCH SALÉ",statut:"non_fait",ing:[]},
+      {rid:"r3",plat:"BOUILLABAISSE POLYNESIENNE",pv:3950,cout:1380,food:true,fam:"PLATS",statut:"non_fait",ing:[]},
+      {rid:"r3",plat:"ENTRECOTE ANGUS",pv:2520,cout:880,food:true,fam:"PLATS",statut:"non_fait",ing:[]},
+      {rid:"r3",plat:"MOJITO",pv:1350,cout:380,food:false,fam:"COCKTAILS",statut:"non_fait",ing:[]},
+      {rid:"r4",plat:"BRUNCH 5500",pv:5500,cout:1650,food:true,fam:"BANQUET",statut:"non_fait",ing:[]},
+      {rid:"r4",plat:"MAGRET DE CANARD",pv:3950,cout:1340,food:true,fam:"TERRE",statut:"non_fait",ing:[]},
+      {rid:"r5",plat:"NEMS CHA GIO",pv:1683,cout:470,food:true,fam:"ENTRÉES",statut:"non_fait",ing:[]},
+      {rid:"r5",plat:"POULET AU CITRON",pv:1750,cout:525,food:true,fam:"POULET",statut:"non_fait",ing:[]},
+    ];
+
+    const BUDGET = [
+      {rid:"r2",mois:"2026-02",ca_budget:9500000,ca_reel:9350000,food_reel:2790000,bev_reel:980000,ms_reel:3010000},
+      {rid:"r3",mois:"2026-02",ca_budget:8000000,ca_reel:7850000,food_reel:2350000,bev_reel:820000,ms_reel:2590000},
+      {rid:"r4",mois:"2026-02",ca_budget:13500000,ca_reel:13200000,food_reel:3960000,bev_reel:1380000,ms_reel:4350000},
+      {rid:"r5",mois:"2026-02",ca_budget:6200000,ca_reel:6100000,food_reel:1830000,bev_reel:640000,ms_reel:2000000},
+      {rid:"r6",mois:"2026-02",ca_budget:6200000,ca_reel:6050000,food_reel:1810000,bev_reel:630000,ms_reel:2010000},
+      {rid:"r7",mois:"2026-02",ca_budget:5000000,ca_reel:4800000,food_reel:1440000,bev_reel:480000,ms_reel:1600000},
+      {rid:"r8",mois:"2026-02",ca_budget:5500000,ca_reel:5200000,food_reel:1560000,bev_reel:520000,ms_reel:1730000},
+    ];
+
+    // ═══════════════════════════════════════════════════════════════
+    // HELPERS
+    // ═══════════════════════════════════════════════════════════════
+    const fmt = v => new Intl.NumberFormat("fr-FR",{maximumFractionDigits:0}).format(v||0)+" F";
+    const fmtK = v => !v?"0":v>=1e6?(v/1e6).toFixed(1)+"M":v>=1e3?Math.round(v/1e3)+"k":v+"";
+    const fmtPct = v => (v||0).toFixed(1)+"%";
+    const fcC = f => f>35?"#f87171":f>28?"#fbbf24":"#34d399";
+    const normH = h => (h||"").toString().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+    const findCol = (headers, patterns) => headers.findIndex(h => { const n=normH(h); return patterns.some(p=>n.includes(p)); });
+    const parseNum = val => { if(val==null||val==="")return 0; if(typeof val==="number")return val; return parseFloat(String(val).replace(/\s/g,"").replace(",","."))||0; };
+
+    const Bar = ({pct,color,h=6}) => (
+      <div style={{height:h,background:"#162036",borderRadius:h,overflow:"hidden"}}>
+        <div style={{height:h,width:`${Math.min(100,Math.max(0,pct||0))}%`,background:color,borderRadius:h,transition:"width 0.4s"}}/>
+      </div>
+    );
+    const Pill = ({color,children,sm}) => (
+      <span style={{display:"inline-flex",alignItems:"center",background:color+"18",color,border:`1px solid ${color}35`,borderRadius:20,padding:sm?"1px 7px":"2px 10px",fontSize:sm?9:11,fontWeight:700,letterSpacing:"0.04em",textTransform:"uppercase",whiteSpace:"nowrap"}}>{children}</span>
+    );
+    const Card = ({children,style,accent}) => (
+      <div style={{background:"linear-gradient(145deg,#0f1d3a,#0a1328)",border:`1px solid ${accent||"#1a2f56"}`,borderRadius:14,padding:18,...(style||{})}}>{children}</div>
+    );
+    const ST = ({children}) => (
+      <div style={{fontSize:10,fontWeight:800,letterSpacing:"0.14em",textTransform:"uppercase",color:"#4b7cf5",marginBottom:14}}>{children}</div>
+    );
+    const KPI = ({label,value,color,sub}) => (
+      <div style={{background:"linear-gradient(135deg,#0f1d3a,#0b1628)",border:`1px solid ${color}25`,borderRadius:12,padding:"14px 18px",flex:1,minWidth:120}}>
+        <div style={{fontSize:8,color:"#3a5070",fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:5}}>{label}</div>
+        <div style={{fontSize:18,fontWeight:800,color,fontFamily:"'DM Mono',monospace"}}>{value}</div>
+        {sub&&<div style={{fontSize:9,color:"#3a5070",marginTop:3}}>{sub}</div>}
+      </div>
+    );
+    const PAL = ["#818cf8","#34d399","#fbbf24","#f472b6","#38bdf8","#fb923c","#2dd4bf","#e879f9"];
+
+    // ═══════════════════════════════════════════════════════════════
+    // MODULE: IMPORT VENTES
+    // ═══════════════════════════════════════════════════════════════
+    function ModImport() {
+      const [files, setFiles] = useState([]);
+      const [selIdx, setSelIdx] = useState(null);
+      const [data, setData] = useState(null);
+      const [meta, setMeta] = useState(null);
+      const [error, setError] = useState(null);
+      const [loading, setLoading] = useState(false);
+      const [dragOver, setDragOver] = useState(false);
+
+      const detectResto = name => {
+        const n = name.toUpperCase();
+        if(n.includes("MEHERIO")) return "r3";
+        if(n.includes("URBAN_CAFÉ")||n.includes("URBAN_CAFE")||n.includes("URBAN CAFÉ")) return "r2";
+        if(n.includes("INSTANT")) return "r4";
+        if(n.includes("JIMMY2")||n.includes("JIMMY 2")) return "r5";
+        if(n.includes("JIMMY")) return "r6";
+        if(n.includes("URBAN_GARDEN")||n.includes("URBAN GARDEN")) return "r7";
+        if(n.includes("URBAN_FARE")||n.includes("URBAN FARE")) return "r8";
+        if(n.includes("LABO")) return "r1";
+        return null;
+      };
+      const detectDate = name => { const m=name.match(/(\d{8})/); if(m){const d=m[1];return `${d.slice(6,8)}/${d.slice(4,6)}/${d.slice(0,4)}`;} return null; };
+      const restoOf = id => RESTOS.find(r=>r.id===id);
+
+      const processFile = async (file) => {
+        setError(null); setData(null); setMeta(null); setLoading(true);
+        const fname = file.name;
+        const rid = detectResto(fname);
+        const date = detectDate(fname);
+        try {
+          const ab = await file.arrayBuffer();
+          let rows = [];
+          if(fname.endsWith('.csv')) {
+            const text = new TextDecoder('utf-8',{fatal:false}).decode(new Uint8Array(ab));
+            rows = text.split('\n').filter(r=>r.trim()).map(r=>r.split(/[;\t,]/).map(c=>c.trim().replace(/^"|"$/g,'')));
+          } else {
+            const wb = XLSX.read(ab, {type:"array"});
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
+          }
+          if(rows.length < 2) { setError("Fichier vide"); setLoading(false); return; }
+          const hdr = rows[0];
+          const iDes = findCol(hdr,["DESIGNATION","DESIG"]);
+          const iQte = findCol(hdr,["QTE VENDUE","QTE","QUANTITE"]);
+          const iCAHT = findCol(hdr,["CA HT","CA  HT","CAHT"]);
+          const iTaxes = findCol(hdr,["TAXES","TVA"]);
+          const iCATTC = findCol(hdr,["CA TTC","CA  TTC","CATTC"]);
+          const iFam = findCol(hdr,["FAMILLE","FAM","CATEGORIE"]);
+          const iFourn = findCol(hdr,["FOURNISSEUR","FOURN"]);
+          const iPU = findCol(hdr,["PRIX DE VENTE","UNITAIRE TTC","PU TTC"]);
+          const iRemise = findCol(hdr,["REMISE ACCORD","REMISE"]);
+          const iCode = findCol(hdr,["CODE PRO","CODE_PRO","CODE"]);
+          if(iDes < 0) { setError("Colonne Désignation non trouvée"); setLoading(false); return; }
+          const parsed = rows.slice(1).filter(r => r[iDes] && String(r[iDes]).trim()).map(r => ({
+            code: iCode>=0 ? String(r[iCode]||"").trim() : "",
+            plat: String(r[iDes]||"").trim(),
+            q: parseNum(r[iQte]), caHT: iCAHT>=0 ? parseNum(r[iCAHT]) : 0,
+            taxes: iTaxes>=0 ? parseNum(r[iTaxes]) : 0,
+            caTTC: iCATTC>=0 ? parseNum(r[iCATTC]) : 0,
+            fam: iFam>=0 ? String(r[iFam]||"").trim() : "",
+            fourn: iFourn>=0 ? String(r[iFourn]||"").trim() : "",
+            puTTC: iPU>=0 ? parseNum(r[iPU]) : 0,
+            remise: iRemise>=0 ? parseNum(r[iRemise]) : 0,
+          })).filter(r => r.q > 0 || r.caTTC > 0);
+          const detectedCols = ["Désignation","Qté","CA HT","Taxes","CA TTC","Famille","Fournisseur","PU TTC","Remise","Code Pro"].filter((_,i) => [iDes,iQte,iCAHT,iTaxes,iCATTC,iFam,iFourn,iPU,iRemise,iCode][i] >= 0);
+          const familles = [...new Set(parsed.map(p=>p.fam))].filter(Boolean);
+          setData(parsed);
+          setMeta({ filename:fname, rid:rid||"r3", date, resto:restoOf(rid)?.nom||"?", colonnes:detectedCols, familles, totalCA:parsed.reduce((s,d)=>s+d.caTTC,0), food:parsed.filter(d=>d.fourn==="NOURRITURE").length, drink:parsed.filter(d=>d.fourn==="BOISSON").length });
+        } catch(err) { setError("Erreur: "+err.message); }
+        setLoading(false);
+      };
+
+      const handleFiles = fileList => {
+        const arr = [...fileList].filter(f => f.name.match(/\.(xls|xlsx|csv)$/i));
+        const newFiles = arr.map(f => ({ file:f, name:f.name, rid:detectResto(f.name), date:detectDate(f.name), resto:restoOf(detectResto(f.name))?.nom||"?" }));
+        setFiles(prev => [...prev, ...newFiles]);
+      };
+
+      return (
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+            <KPI label="Module" value="Import" color="#818cf8" sub="Ventes PSW"/>
+            <KPI label="Fichiers" value={files.length} color="#fbbf24"/>
+            {meta && <KPI label="CA TTC" value={fmt(meta.totalCA)} color="#34d399" sub={`${meta.food} N · ${meta.drink} B`}/>}
+          </div>
+          <Card>
+            <ST>📊 Import ventes — Export PSW (XLS/XLSX/CSV)</ST>
+            <div style={{fontSize:11,color:"#5a7898",marginBottom:14,lineHeight:1.7}}>
+              Toutes les colonnes sont lues : <strong style={{color:"#818cf8"}}>Code Pro, Désignation, Qté, CA HT, Taxes, CA TTC, Famille, Fournisseur, PU TTC, Remise</strong>
+            </div>
+            <div onDragOver={e=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onDrop={e=>{e.preventDefault();setDragOver(false);handleFiles(e.dataTransfer.files);}} onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept=".xls,.xlsx,.csv";inp.multiple=true;inp.onchange=e=>handleFiles(e.target.files);inp.click();}} style={{border:`2px dashed ${dragOver?"#818cf8":"#1a2f56"}`,borderRadius:14,padding:"36px 20px",textAlign:"center",background:dragOver?"#818cf810":"#080f24",cursor:"pointer"}}>
+              <div style={{fontSize:36,marginBottom:8,opacity:0.3}}>📁</div>
+              <div style={{fontSize:13,fontWeight:700,color:"#7090b0"}}>Glissez vos exports ventes PSW ici</div>
+              <div style={{fontSize:11,color:"#3a5070",marginTop:4}}>XLS · XLSX · CSV</div>
+            </div>
+          </Card>
+          {files.length > 0 && <Card>
+            <ST>📂 {files.length} fichier{files.length>1?"s":""}</ST>
+            {files.map((f,i) => {
+              const r = f.rid ? restoOf(f.rid) : null;
+              return (<div key={i} onClick={()=>{setSelIdx(i);processFile(f.file);}} style={{display:"grid",gridTemplateColumns:"2.5fr 1fr 1fr 30px",gap:8,padding:"10px 12px",background:selIdx===i?"#818cf815":"#080f24",borderRadius:8,borderLeft:`3px solid ${selIdx===i?"#818cf8":r?.color||"#3a5070"}`,cursor:"pointer",alignItems:"center",marginBottom:3}}>
+                <span style={{fontSize:10,fontWeight:600,color:selIdx===i?"#e8f0ff":"#b0c4de",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</span>
+                <span style={{fontSize:10,color:r?.color||"#f87171",fontWeight:600}}>{r?.nom||"⚠ ?"}</span>
+                <span style={{fontSize:10,color:"#818cf8",fontFamily:"'DM Mono',monospace"}}>{f.date||"?"}</span>
+                <span style={{cursor:"pointer",color:"#f87171",fontSize:14}} onClick={e=>{e.stopPropagation();setFiles(p=>p.filter((_,j)=>j!==i));if(selIdx===i){setSelIdx(null);setData(null);setMeta(null);}}}>×</span>
+              </div>);
+            })}
+          </Card>}
+          {loading && <Card><div style={{textAlign:"center",padding:20,color:"#818cf8",fontWeight:600}}>⏳ Lecture du fichier...</div></Card>}
+          {error && <Card accent="#f87171"><div style={{color:"#f87171",fontWeight:600}}>❌ {error}</div></Card>}
+          {data && meta && <Card accent={restoOf(meta.rid)?.color}>
+            <ST>📄 {meta.filename} — {meta.resto}</ST>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:14}}>
+              <KPI label="Lignes" value={data.length} color="#fbbf24"/>
+              <KPI label="CA TTC" value={fmt(meta.totalCA)} color="#34d399"/>
+              <KPI label="Colonnes" value={meta.colonnes.length+"/10"} color="#818cf8"/>
+            </div>
+            <div style={{padding:"8px 12px",background:"#080f24",borderRadius:8,marginBottom:10}}>
+              <div style={{fontSize:9,color:"#5a7898",fontWeight:700,marginBottom:6}}>📊 Colonnes détectées</div>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                {["Désignation","Qté","CA HT","Taxes","CA TTC","Famille","Fournisseur","PU TTC","Remise","Code Pro"].map(col => {
+                  const found = meta.colonnes.includes(col);
+                  return <span key={col} style={{padding:"2px 8px",borderRadius:20,background:found?"#34d39918":"#f8717110",border:`1px solid ${found?"#34d39940":"#f8717130"}`,fontSize:8,color:found?"#34d399":"#f87171",fontWeight:600}}>{found?"✓":"✗"} {col}</span>;
+                })}
+              </div>
+            </div>
+            {meta.familles.length > 0 && <div style={{padding:"8px 12px",background:"#080f24",borderRadius:8,marginBottom:10}}>
+              <div style={{fontSize:9,color:"#818cf8",fontWeight:700,marginBottom:4}}>🏷️ {meta.familles.length} familles</div>
+              <div style={{display:"flex",gap:3,flexWrap:"wrap"}}>{meta.familles.map(f => <span key={f} style={{padding:"2px 7px",borderRadius:20,background:"#818cf810",border:"1px solid #818cf820",fontSize:8,color:"#818cf8"}}>{f}</span>)}</div>
+            </div>}
+            <div style={{overflowX:"auto"}}>
+              <div style={{display:"grid",gridTemplateColumns:"2fr 1.2fr 0.5fr 0.5fr 0.8fr 0.8fr 0.8fr",gap:4,padding:"6px 8px",minWidth:750}}>
+                {["Désignation","Famille","Qté","Type","PU TTC","CA TTC","Remise"].map(h => <div key={h} style={{fontSize:7,color:"#3a5070",fontWeight:700,textTransform:"uppercase"}}>{h}</div>)}
+              </div>
+              <div style={{maxHeight:400,overflowY:"auto",minWidth:750}}>
+                {data.slice(0,80).map((d,i) => (
+                  <div key={i} style={{display:"grid",gridTemplateColumns:"2fr 1.2fr 0.5fr 0.5fr 0.8fr 0.8fr 0.8fr",gap:4,padding:"6px 8px",background:i%2===0?"#080f24":"transparent",borderRadius:6,alignItems:"center",fontSize:10,borderLeft:`2px solid ${d.fourn==="NOURRITURE"?"#34d399":d.fourn==="BOISSON"?"#fbbf24":"#3a5070"}`}}>
+                    <div style={{color:"#cad8f0",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.plat}</div>
+                    <div style={{color:"#818cf8",fontSize:9}}>{d.fam||"—"}</div>
+                    <div style={{color:"#e8f0ff",fontFamily:"'DM Mono',monospace",fontWeight:700}}>{d.q}</div>
+                    <div><Pill color={d.fourn==="NOURRITURE"?"#34d399":d.fourn==="BOISSON"?"#fbbf24":"#5a7898"} sm>{d.fourn==="NOURRITURE"?"N":d.fourn==="BOISSON"?"B":"D"}</Pill></div>
+                    <div style={{color:"#f59e0b",fontFamily:"'DM Mono',monospace"}}>{fmt(d.puTTC)}</div>
+                    <div style={{color:"#e8f0ff",fontFamily:"'DM Mono',monospace"}}>{fmt(d.caTTC)}</div>
+                    <div style={{color:d.remise>0?"#f59e0b":"#2a4060",fontFamily:"'DM Mono',monospace",fontSize:9}}>{d.remise>0?fmt(d.remise):"—"}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>}
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // MODULE: DASHBOARD RESTAURANT
+    // ═══════════════════════════════════════════════════════════════
+    function VResto({ resto }) {
+      const col = resto.color;
+      const v = VENTES.filter(x => x.rid === resto.id);
+      const fi = FICHES.filter(x => x.rid === resto.id);
+      const bud = BUDGET.find(x => x.rid === resto.id);
+      const caTotal = v.reduce((s,x) => s+x.ca, 0);
+      const food = v.filter(x => x.food);
+      const drink = v.filter(x => !x.food);
+      const foodCA = food.reduce((s,x) => s+x.ca, 0);
+      const drinkCA = drink.reduce((s,x) => s+x.ca, 0);
+      const byFam = {};
+      v.forEach(x => { if(!byFam[x.fam]) byFam[x.fam]={ca:0,q:0,food:x.food}; byFam[x.fam].ca+=x.ca; byFam[x.fam].q+=x.q; });
+      const famSorted = Object.entries(byFam).sort((a,b) => b[1].ca - a[1].ca);
+      const fichesDone = fi.filter(f => f.statut==="fait").length;
+
+      return (
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+            <KPI label="CA Total" value={fmt(caTotal)} color={col}/>
+            <KPI label="Nourriture" value={fmt(foodCA)} color="#34d399" sub={`${caTotal>0?(foodCA/caTotal*100).toFixed(0):0}%`}/>
+            <KPI label="Boissons" value={fmt(drinkCA)} color="#fbbf24" sub={`${caTotal>0?(drinkCA/caTotal*100).toFixed(0):0}%`}/>
+            <KPI label="Fiches" value={`${fichesDone}/${fi.length}`} color="#818cf8"/>
+          </div>
+          {bud && <Card>
+            <ST>📐 Budget vs Réel — Fév 2026</ST>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
+              <span style={{fontSize:12,fontWeight:800,color:"#cad8f0"}}>CA: <span style={{color:col}}>{fmtK(bud.ca_reel)} F</span></span>
+              <span style={{color:bud.ca_reel>=bud.ca_budget?"#34d399":"#f87171",fontWeight:700}}>{((bud.ca_reel/bud.ca_budget-1)*100).toFixed(1)}%</span>
+            </div>
+            <Bar pct={bud.ca_budget>0?bud.ca_reel/bud.ca_budget*100:0} color={bud.ca_reel>=bud.ca_budget?"#34d399":"#f87171"} h={10}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginTop:14}}>
+              {[{l:"Food",v:bud.food_reel,c:"#34d399"},{l:"Bev",v:bud.bev_reel,c:"#fbbf24"},{l:"MS",v:bud.ms_reel,c:"#f472b6"}].map(r => (
+                <div key={r.l} style={{background:"#080f24",borderRadius:10,padding:"10px 12px"}}>
+                  <div style={{fontSize:8,color:"#3a5070",fontWeight:700,textTransform:"uppercase"}}>{r.l}</div>
+                  <div style={{fontSize:16,fontWeight:800,color:r.c,fontFamily:"'DM Mono',monospace"}}>{bud.ca_reel>0?(r.v/bud.ca_reel*100).toFixed(1):0}%</div>
+                </div>
+              ))}
+            </div>
+          </Card>}
+          <Card>
+            <ST>Par famille</ST>
+            {famSorted.map(([f,d],i) => (
+              <div key={f} style={{marginBottom:9}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:3}}>
+                  <span style={{color:"#7090b0"}}>{f} <Pill color={d.food?"#34d399":"#fbbf24"} sm>{d.food?"N":"B"}</Pill></span>
+                  <span style={{color:"#5a7898",fontFamily:"'DM Mono',monospace"}}>{fmt(d.ca)}</span>
+                </div>
+                <Bar pct={caTotal>0?d.ca/caTotal*100:0} color={PAL[i%PAL.length]} h={7}/>
+              </div>
+            ))}
+          </Card>
+          <Card>
+            <ST>🔝 Top ventes</ST>
+            {[...v].sort((a,b)=>b.ca-a.ca).slice(0,8).map((x,i) => (
+              <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #0f1f3d"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{width:20,height:20,borderRadius:6,background:col+"20",color:col,fontSize:10,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{i+1}</span>
+                  <div><div style={{fontSize:11,fontWeight:700,color:"#cad8f0"}}>{x.plat}</div><div style={{fontSize:9,color:"#3a5070"}}>{x.fam}</div></div>
+                </div>
+                <span style={{fontSize:12,fontWeight:800,color:col,fontFamily:"'DM Mono',monospace"}}>{fmt(x.ca)}</span>
+              </div>
+            ))}
+          </Card>
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // MODULE: VUE CONSOLIDÉE
+    // ═══════════════════════════════════════════════════════════════
+    function Conso() {
+      const restosOp = RESTOS.filter(r => r.type==="RESTAURANT");
+      const totalCA = BUDGET.reduce((s,b) => s+b.ca_reel, 0);
+      const totalBudget = BUDGET.reduce((s,b) => s+b.ca_budget, 0);
+      return (
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+            <KPI label="CA Groupe" value={fmtK(totalCA)+" F"} color="#8b5cf6" sub="Fév 2026"/>
+            <KPI label="Budget" value={fmtK(totalBudget)+" F"} color="#818cf8"/>
+            <KPI label="Atteinte" value={fmtPct(totalCA/totalBudget*100)} color={totalCA>=totalBudget?"#34d399":"#f87171"}/>
+          </div>
+          <Card>
+            <ST>Performance par restaurant</ST>
+            {restosOp.map(r => {
+              const b = BUDGET.find(x=>x.rid===r.id);
+              const pct = b&&b.ca_budget>0 ? b.ca_reel/b.ca_budget*100 : 0;
+              return (<div key={r.id} style={{marginBottom:14}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                  <span style={{display:"flex",alignItems:"center",gap:8}}><span style={{width:8,height:8,borderRadius:"50%",background:r.color}}/><span style={{fontSize:12,fontWeight:700,color:r.color}}>{r.nom}</span></span>
+                  <span style={{fontSize:12,fontWeight:800,color:pct>=100?"#34d399":"#f87171",fontFamily:"'DM Mono',monospace"}}>{fmtPct(pct)}</span>
+                </div>
+                <Bar pct={pct} color={pct>=100?"#34d399":r.color} h={8}/>
+              </div>);
+            })}
+          </Card>
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // MODULE: FICHES TECHNIQUES
+    // ═══════════════════════════════════════════════════════════════
+    function ModFiches() {
+      const [selR, setSelR] = useState("tous");
+      const [selFiche, setSelFiche] = useState(null);
+      const [search, setSearch] = useState("");
+      const src = useMemo(() => {
+        let f = selR==="tous" ? FICHES : FICHES.filter(x=>x.rid===selR);
+        if(search.length>=2) f = f.filter(x => x.plat.toLowerCase().includes(search.toLowerCase()) || x.fam.toLowerCase().includes(search.toLowerCase()));
+        return f;
+      }, [selR, search]);
+      const fait = src.filter(f=>f.statut==="fait").length;
+      const restoOf = id => RESTOS.find(r=>r.id===id);
+
+      if(selFiche) {
+        const f = selFiche, r = restoOf(f.rid), fc = f.cout>0&&f.pv>0?f.cout/f.pv*100:0;
+        return (<div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <button onClick={()=>setSelFiche(null)} style={{alignSelf:"flex-start",padding:"6px 16px",borderRadius:8,border:"1px solid #1a2f56",background:"transparent",color:"#7090b0",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>← Retour</button>
+          <Card accent={r?.color}>
+            <div style={{fontSize:18,fontWeight:800,color:"#e8f0ff",marginBottom:6}}>{f.plat}</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}><Pill color={r?.color} sm>{r?.nom}</Pill><Pill color="#818cf8" sm>{f.fam}</Pill><Pill color={f.statut==="fait"?"#34d399":"#f87171"} sm>{f.statut==="fait"?"✓ Complète":"✗ À compléter"}</Pill></div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16}}>
+              {[{l:"Prix vente",v:fmt(f.pv),c:"#e8f0ff"},{l:"Coût",v:fmt(f.cout),c:fcC(fc)},{l:"Food cost",v:fc>0?fmtPct(fc):"–",c:fcC(fc)}].map(k=>(<div key={k.l} style={{background:"#080f24",borderRadius:10,padding:"12px 16px"}}><div style={{fontSize:9,color:"#3a5070",fontWeight:700,textTransform:"uppercase",marginBottom:4}}>{k.l}</div><div style={{fontSize:22,fontWeight:900,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div></div>))}
+            </div>
+            <ST>Ingrédients</ST>
+            {f.ing.length>0 ? <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}><thead><tr style={{color:"#3a5070",borderBottom:"1px solid #1a2f56"}}><th style={{textAlign:"left",padding:"6px 8px"}}>Produit</th><th style={{padding:"6px 8px"}}>Qté</th><th style={{textAlign:"right",padding:"6px 8px"}}>Coût</th></tr></thead><tbody>{f.ing.map((ig,j)=><tr key={j} style={{borderBottom:"1px solid #0a1428"}}><td style={{padding:8,color:"#34d399",fontWeight:600}}>{ig.p}</td><td style={{padding:8,color:"#cad8f0"}}>{ig.q}</td><td style={{padding:8,textAlign:"right",color:"#fbbf24",fontFamily:"'DM Mono',monospace"}}>{fmt(ig.cu)}</td></tr>)}</tbody></table> : <div style={{padding:24,background:"#080f24",borderRadius:10,textAlign:"center",color:"#3a5070"}}>📋 Aucun ingrédient — fiche à compléter</div>}
+          </Card>
+        </div>);
+      }
+
+      return (<div style={{display:"flex",flexDirection:"column",gap:14}}>
+        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}><KPI label="Fiches" value={src.length} color="#818cf8"/><KPI label="Complètes" value={fait} color="#34d399"/><KPI label="À faire" value={src.length-fait} color="#f87171"/></div>
+        <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Rechercher..." style={{flex:"1 1 200px",maxWidth:280,padding:"8px 12px",background:"#080f24",border:"1px solid #1a2f56",borderRadius:9,color:"#cad8f0",fontSize:11,outline:"none",fontFamily:"inherit"}}/>
+          <button onClick={()=>setSelR("tous")} style={{padding:"5px 12px",borderRadius:20,border:"none",background:selR==="tous"?"#818cf8":"#0f1d3a",color:selR==="tous"?"#fff":"#3a5070",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Tous</button>
+          {RESTOS.filter(r=>FICHES.some(f=>f.rid===r.id)).map(r => <button key={r.id} onClick={()=>setSelR(r.id)} style={{padding:"5px 12px",borderRadius:20,border:"none",background:selR===r.id?r.color:r.color+"12",color:selR===r.id?"#080f24":r.color,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{r.nom}</button>)}
+        </div>
+        <Card>{src.map((f,i) => {
+          const r=restoOf(f.rid), fc=f.cout>0&&f.pv>0?f.cout/f.pv*100:0;
+          return (<div key={i} onClick={()=>setSelFiche(f)} style={{display:"grid",gridTemplateColumns:"2.5fr 0.8fr 0.8fr 0.8fr 0.5fr",gap:8,padding:"10px 12px",background:i%2===0?"#080f24":"transparent",borderRadius:8,borderLeft:`3px solid ${r?.color||"#1a2f56"}`,cursor:"pointer",alignItems:"center",marginBottom:2}}>
+            <div><div style={{fontSize:11,fontWeight:700,color:"#cad8f0"}}>{f.plat}</div><div style={{fontSize:9,color:"#3a5070"}}>{r?.nom} · {f.fam}</div></div>
+            <div style={{color:"#e8f0ff",fontFamily:"'DM Mono',monospace",fontSize:11}}>{fmt(f.pv)}</div>
+            <div style={{color:fcC(fc),fontFamily:"'DM Mono',monospace",fontSize:11}}>{fmt(f.cout)}</div>
+            <div style={{color:fcC(fc),fontFamily:"'DM Mono',monospace",fontSize:11,fontWeight:700}}>{fc>0?fmtPct(fc):"–"}</div>
+            <Pill color={f.statut==="fait"?"#34d399":"#f87171"} sm>{f.statut==="fait"?"✓":"✗"}</Pill>
+          </div>);
+        })}</Card>
+      </div>);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // MAIN APP
+    // ═══════════════════════════════════════════════════════════════
+    function App() {
+      const [sel, setSel] = useState(null);
+      const [sb, setSb] = useState(true);
+      const [collapsed, setCollapsed] = useState({});
+      const togglePole = id => setCollapsed(p => ({...p,[id]:!p[id]}));
+      const cur = RESTOS.find(r => r.id === sel);
+      const isTool = ["import","fiches","conso"].includes(sel);
+
+      const NAV = [
+        { pole:"GROUPE", items:[{id:"conso",icon:"◈",label:"Vue Consolidée"}] },
+        { pole:"RESTAURANTS", items:RESTOS.map(r=>({id:r.id,label:r.nom,color:r.color})) },
+        { pole:"MENU", items:[{id:"fiches",icon:"📋",label:"Fiches techniques"}] },
+        { pole:"OUTILS", items:[{id:"import",icon:"📥",label:"Import données"}] },
+      ];
+
+      return (
+        <div style={{fontFamily:"'Outfit','DM Sans',sans-serif",background:"#060d1f",minHeight:"100vh",color:"#cad8f0",display:"flex"}}>
+          {/* SIDEBAR */}
+          <div style={{width:sb?220:56,background:"linear-gradient(180deg,#0a1628,#060d1f)",borderRight:"1px solid #0f1f3d",display:"flex",flexDirection:"column",transition:"width 0.25s",flexShrink:0,overflow:"hidden"}}>
+            <div style={{padding:sb?"20px 18px 16px":"16px 14px",borderBottom:"1px solid #0f1f3d"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <div style={{width:32,height:32,borderRadius:9,flexShrink:0,background:"linear-gradient(135deg,#2dd4bf,#818cf8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:900,color:"#060d1f"}}>T</div>
+                {sb && <div><div style={{fontWeight:800,fontSize:13,color:"#e8f0ff"}}>Groupe Trinity</div><div style={{fontSize:9,color:"#2a4060",fontWeight:700,letterSpacing:"0.1em"}}>PLATEFORME · FÉV 2026</div></div>}
+              </div>
+            </div>
+            <nav style={{flex:1,padding:"10px 8px",display:"flex",flexDirection:"column",gap:2,overflowY:"auto"}}>
+              {NAV.map(section => (
+                <div key={section.pole}>
+                  {sb && <div onClick={()=>togglePole(section.pole)} style={{display:"flex",justifyContent:"space-between",padding:"6px 10px",cursor:"pointer",userSelect:"none",marginTop:8}}>
+                    <span style={{fontSize:8,fontWeight:800,color:"#1a3060",letterSpacing:"0.15em"}}>{section.pole}</span>
+                    <span style={{fontSize:8,color:"#1a3060",transform:collapsed[section.pole]?"rotate(-90deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▾</span>
+                  </div>}
+                  {!collapsed[section.pole] && section.items.map(t => (
+                    <button key={t.id} className="ni" onClick={()=>setSel(t.id)} style={{display:"flex",alignItems:"center",gap:10,padding:sb?"9px 10px":"9px",borderRadius:10,border:"none",cursor:"pointer",background:sel===t.id?"#1a2f56":"transparent",color:sel===t.id?"#cad8f0":"#2a4060",textAlign:"left",width:"100%",justifyContent:sb?"flex-start":"center",fontFamily:"inherit"}}>
+                      {t.color ? <span style={{width:8,height:8,borderRadius:"50%",background:sel===t.id?t.color:"#1a3060",boxShadow:sel===t.id?`0 0 8px ${t.color}50`:"none"}}/> : <span style={{fontSize:13,color:sel===t.id?"#8b5cf6":"#2a4060"}}>{t.icon}</span>}
+                      {sb && <span style={{fontSize:11,fontWeight:700,color:sel===t.id?(t.color||"#cad8f0"):"#3a5070"}}>{t.label}</span>}
+                    </button>
+                  ))}
+                  <div style={{height:1,background:"#0f1f3d",margin:"4px 6px"}}/>
+                </div>
+              ))}
+            </nav>
+            <button onClick={()=>setSb(!sb)} style={{width:"100%",padding:"10px",border:"none",borderTop:"1px solid #0f1f3d",background:"transparent",color:"#2a4060",cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>{sb?"◀ Réduire":"▶"}</button>
+          </div>
+
+          {/* MAIN */}
+          <div style={{flex:1,overflow:"auto",padding:"24px 22px",height:"100vh"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
+              <div>
+                <h1 style={{fontSize:18,fontWeight:800,color:"#e8f0ff",margin:0}}>{sel==="conso"?"Vue Consolidée":sel==="import"?"Import données":sel==="fiches"?"Fiches techniques":cur?.nom||"Groupe Trinity"}</h1>
+                <div style={{fontSize:11,color:"#2a4060",marginTop:3}}>{sel==="conso"?"8 entités · Fév 2026":sel==="import"?"Ventes PSW · XLS/XLSX/CSV":sel==="fiches"?"Grammages · Coûts":cur?"Dashboard":"Sélectionnez un module"}</div>
+              </div>
+              {!isTool && <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{RESTOS.filter(r=>r.type==="RESTAURANT").map(r => (
+                <div key={r.id} onClick={()=>setSel(r.id)} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 9px",cursor:"pointer",background:sel===r.id?r.color+"25":"transparent",borderRadius:20,border:`1px solid ${sel===r.id?r.color+"60":r.color+"20"}`,fontSize:9,color:r.color,fontWeight:700}}><span style={{width:5,height:5,borderRadius:"50%",background:r.color}}/>{r.nom}</div>
+              ))}</div>}
+            </div>
+            <div className="fa" key={sel||"home"}>
+              {sel==="conso" ? <Conso/> : sel==="import" ? <ModImport/> : sel==="fiches" ? <ModFiches/> : cur ? <VResto resto={cur}/> :
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"80px 20px",gap:16}}>
+                <div style={{fontSize:56,opacity:0.2}}>🍽️</div>
+                <div style={{fontSize:16,fontWeight:700,color:"#2a4060"}}>Bienvenue sur Trinity</div>
+                <div style={{fontSize:12,color:"#1a3060",textAlign:"center",maxWidth:400}}>Plateforme de gestion multi-restaurants du Groupe Trinity.</div>
+                <div style={{display:"flex",gap:8,marginTop:12}}>
+                  <button onClick={()=>setSel("conso")} style={{padding:"10px 18px",borderRadius:10,border:"none",background:"#8b5cf620",color:"#8b5cf6",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>◈ Vue Consolidée</button>
+                  <button onClick={()=>setSel("import")} style={{padding:"10px 18px",borderRadius:10,border:"none",background:"#818cf820",color:"#818cf8",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>📥 Import</button>
+                </div>
+              </div>}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>
