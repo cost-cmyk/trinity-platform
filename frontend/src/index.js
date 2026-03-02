@@ -11,6 +11,8 @@ root.render(
 );
 
 // Enregistrement du Service Worker pour PWA
+// TEMPORAIREMENT DÉSACTIVÉ pour résoudre problème de cache
+/*
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
@@ -26,5 +28,16 @@ if ('serviceWorker' in navigator) {
       .catch((error) => {
         console.log('❌ Échec enregistrement Service Worker:', error);
       });
+  });
+}
+*/
+
+// Désactiver le service worker existant
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(function(registrations) {
+    for(let registration of registrations) {
+      registration.unregister();
+      console.log('🗑️ Service Worker désactivé');
+    }
   });
 }
