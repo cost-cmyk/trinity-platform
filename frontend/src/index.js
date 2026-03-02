@@ -9,3 +9,22 @@ root.render(
     <App />
   </React.StrictMode>,
 );
+
+// Enregistrement du Service Worker pour PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/service-worker.js')
+      .then((registration) => {
+        console.log('✅ Service Worker enregistré:', registration.scope);
+        
+        // Vérifier les mises à jour toutes les heures
+        setInterval(() => {
+          registration.update();
+        }, 3600000);
+      })
+      .catch((error) => {
+        console.log('❌ Échec enregistrement Service Worker:', error);
+      });
+  });
+}
