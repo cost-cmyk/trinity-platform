@@ -1980,9 +1980,9 @@ async def get_restaurant_dashboard(restaurant_id: str, date: Optional[str] = Non
         {"$match": ventes_query},
         {"$group": {
             "_id": None,
-            "ca_total": {"$sum": "$ca_ttc"},
-            "ca_food": {"$sum": {"$cond": [{"$eq": ["$is_food", True]}, "$ca_ttc", 0]}},
-            "ca_drink": {"$sum": {"$cond": [{"$eq": ["$is_food", False]}, "$ca_ttc", 0]}},
+            "ca_total": {"$sum": "$ca_ht"},
+            "ca_food": {"$sum": {"$cond": [{"$eq": ["$is_food", True]}, "$ca_ht", 0]}},
+            "ca_drink": {"$sum": {"$cond": [{"$eq": ["$is_food", False]}, "$ca_ht", 0]}},
             "total_remise": {"$sum": "$remise"},
             "total_quantite": {"$sum": "$quantite"},
             "nb_lignes": {"$sum": 1}
