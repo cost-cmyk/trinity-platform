@@ -3583,7 +3583,7 @@ const BudgetVsReelModule = ({ restaurants }) => {
                 </div>
                 <div className="p-4 rounded-lg bg-secondary border border-border">
                   <div className="text-xs uppercase opacity-70 mb-1">Atteinte</div>
-                  <div className="text-lg font-bold text-green-400">{data.stats.atteinte_pct.toFixed(1)}%</div>
+                  <div className="text-lg font-bold text-green-400">{(data.stats.atteinte_pct || 0).toFixed(1)}%</div>
                 </div>
                 <div className="p-4 rounded-lg bg-secondary border border-border">
                   <div className="text-xs uppercase opacity-70 mb-1">Reste</div>
