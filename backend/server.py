@@ -1077,7 +1077,7 @@ async def preview_import_file(
         ventes_data = parse_xlsx_file(content, file.filename)
     
     # Analyser les données
-    ca_total = sum(v["ca_ttc"] for v in ventes_data)
+    ca_total = sum(v["ca_ht"] for v in ventes_data)
     total_quantite = sum(v["quantite"] for v in ventes_data)
     total_remise = sum(v["remise"] for v in ventes_data)
     
