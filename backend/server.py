@@ -1198,7 +1198,7 @@ async def confirm_import(data: dict):
     import_record = {
         "id": import_id,
         "type": "ventes",
-        "filename": filename,
+        "nom_fichier": filename,
         "restaurant_id": restaurant_id,
         "restaurant_nom": restaurant["nom"],
         "date_import": datetime.now(timezone.utc).isoformat(),
@@ -1206,7 +1206,7 @@ async def confirm_import(data: dict):
         "nb_lignes": len(ventes_docs),
         "nb_exclues": len(lignes) - len(lignes_actives),
         "ca_total": round(ca_total, 2),
-        "statut": "complété",
+        "statut": "importé",
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.imports.insert_one(import_record)
