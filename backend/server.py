@@ -874,6 +874,7 @@ def parse_xls_file(file_content: bytes, filename: str) -> List[dict]:
 
 def parse_xlsx_file(file_content: bytes, filename: str) -> List[dict]:
     """Parse un fichier .xlsx (Excel 2007+) et extrait les ventes"""
+    logging.info(f"🟠 PARSER XLSX APPELÉ pour {filename}")
     ventes = []
     
     try:
