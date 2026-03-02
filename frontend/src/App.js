@@ -4456,6 +4456,8 @@ function App() {
     switch (activeModule) {
       case "dashboard":
         return <Dashboard stats={stats} restaurantStats={restaurantStats} loading={loading} restaurants={restaurants} />;
+      case "budget-vs-reel":
+        return <BudgetVsReelModule restaurants={restaurants} />;
       case "restaurants":
         return <RestaurantsModule restaurants={restaurants} onRefresh={fetchData} />;
       case "carte":
