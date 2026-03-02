@@ -3887,6 +3887,60 @@ const ImportModule = ({ restaurants, onRefresh }) => {
     }
   };
 
+  // Fonction pour gérer l'import Budget
+  const handleBudgetFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !budgetMois) return;
+    
+    setBudgetFile(file);
+    setBudgetLoading(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('mois', budgetMois);
+      
+      const response = await axios.post(`${API}/imports/budget/preview`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      setBudgetPreview(response.data);
+      toast.success(`${response.data.nb_lignes} lignes de budget détectées pour ${response.data.nb_restaurants} restaurants`);
+    } catch (err) {
+      toast.error("Erreur: " + (err.response?.data?.detail || err.message));
+      setBudgetPreview(null);
+    } finally {
+      setBudgetLoading(false);
+    }
+  };
+  
+  const confirmBudgetImport = async () => {
+    if (!budgetPreview || !budgetMois) {
+      toast.error("Données manquantes");
+      return;
+    }
+    
+    setImporting(true);
+    
+    try {
+      const response = await axios.post(`${API}/imports/budget/confirm`, {
+        budgets: budgetPreview.budgets,
+        mois: budgetMois,
+        filename: budgetFile?.name || 'budget.xlsx'
+      });
+      
+      toast.success(`${response.data.nb_budgets_crees} budgets importés pour ${budgetMois}`);
+      setBudgetPreview(null);
+      setBudgetFile(null);
+      onRefresh();
+    } catch (err) {
+      toast.error("Erreur: " + (err.response?.data?.detail || err.message));
+    } finally {
+      setImporting(false);
+    }
+  };
+
+
   return (
     <div className="space-y-6" data-testid="import-module">
       {/* Header avec tabs */}
