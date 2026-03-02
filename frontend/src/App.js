@@ -3632,13 +3632,13 @@ const BudgetVsReelModule = ({ restaurants }) => {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm">Progression mois</span>
                     <span className="text-sm font-medium">
-                      {data.stats.atteinte_pct.toFixed(1)}% atteint en {data.stats.jour_actuel}/{data.stats.nb_jours_mois} jours
+                      {(data.stats.atteinte_pct || 0).toFixed(1)}% atteint en {data.stats.jour_actuel}/{data.stats.nb_jours_mois} jours
                     </span>
                   </div>
                   <div className="bg-secondary rounded-full h-3">
                     <div
                       className={`h-3 rounded-full ${data.stats.en_avance ? 'bg-green-500' : 'bg-red-500'}`}
-                      style={{ width: `${Math.min(data.stats.atteinte_pct, 100)}%` }}
+                      style={{ width: `${Math.min(data.stats.atteinte_pct || 0, 100)}%` }}
                     />
                   </div>
                   <div className="text-right text-xs mt-1 text-green-400">
