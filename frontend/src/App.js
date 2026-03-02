@@ -3328,6 +3328,331 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
   );
 };
 
+// ====================== BUDGET VS RÉEL MODULE ======================
+
+const BudgetVsReelModule = ({ restaurants }) => {
+  const [loading, setLoading] = useState(false);
+  const [vue, setVue] = useState("groupe"); // "groupe" ou "restaurant"
+  const [periode, setPeriode] = useState("mensuel"); // "mensuel" ou "quotidien"
+  const [moisSelectionne, setMoisSelectionne] = useState("2026-03"); // Default mars 2026
+  const [restaurantSelectionne, setRestaurantSelectionne] = useState(null);
+  const [data, setData] = useState(null);
+
+  // Charger les données
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      let endpoint = "";
+      
+      if (vue === "groupe") {
+        endpoint = `/api/dashboard/budget-vs-reel/groupe/${periode}?mois=${moisSelectionne}`;
+      } else {
+        if (!restaurantSelectionne) return;
+        endpoint = `/api/dashboard/budget-vs-reel/restaurant/${restaurantSelectionne.id}/${periode}?mois=${moisSelectionne}`;
+      }
+
+      const res = await axios.get(`${API}/api${endpoint}`);
+      setData(res.data);
+    } catch (err) {
+      console.error("Erreur chargement données budget:", err);
+      toast.error("Erreur lors du chargement des données");
+    } finally {
+      setLoading(false);
+    }
+  }, [vue, periode, moisSelectionne, restaurantSelectionne]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Format de prix
+  const fmtPrice = (val) => {
+    if (!val || val === 0) return "0 F";
+    const absVal = Math.abs(val);
+    if (absVal >= 1000000) {
+      return `${(val / 1000000).toFixed(2)}M F`;
+    } else if (absVal >= 1000) {
+      return `${(val / 1000).toFixed(0)}k F`;
+    }
+    return `${Math.round(val)} F`;
+  };
+
+  // Composant KPI Card
+  const KPICard = ({ label, value, subtext, color = "blue" }) => {
+    const colorClasses = {
+      blue: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+      green: "bg-green-500/10 text-green-400 border-green-500/20",
+      red: "bg-red-500/10 text-red-400 border-red-500/20",
+      orange: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+      purple: "bg-purple-500/10 text-purple-400 border-purple-500/20"
+    };
+
+    return (
+      <div className={`p-4 rounded-lg border ${colorClasses[color] || colorClasses.blue}`}>
+        <div className="text-xs uppercase tracking-wide opacity-70 mb-2">{label}</div>
+        <div className="text-2xl font-bold">{fmtPrice(value)}</div>
+        {subtext && <div className="text-sm mt-1 opacity-80">{subtext}</div>}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* En-tête avec titre et contrôles */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          <TrendingUp className="w-8 h-8" />
+          Budget vs Réel - {vue === "groupe" ? "GROUPE" : restaurantSelectionne?.nom || ""}
+        </h1>
+
+        {/* Sélecteur de mois */}
+        <div className="flex items-center gap-4">
+          <input
+            type="month"
+            value={moisSelectionne}
+            onChange={(e) => setMoisSelectionne(e.target.value)}
+            className="px-4 py-2 rounded-lg bg-secondary border border-border text-foreground"
+          />
+        </div>
+      </div>
+
+      {/* Navigation Vue (Groupe / Restaurant) */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setVue("groupe")}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            vue === "groupe"
+              ? "bg-primary text-primary-foreground"
+              : "bg-secondary text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Vue Groupe
+        </button>
+        <button
+          onClick={() => setVue("restaurant")}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            vue === "restaurant"
+              ? "bg-primary text-primary-foreground"
+              : "bg-secondary text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Vue Restaurant
+        </button>
+
+        {vue === "restaurant" && (
+          <select
+            value={restaurantSelectionne?.id || ""}
+            onChange={(e) => {
+              const resto = restaurants.find(r => r.id === e.target.value);
+              setRestaurantSelectionne(resto);
+            }}
+            className="px-4 py-2 rounded-lg bg-secondary border border-border text-foreground"
+          >
+            <option value="">Sélectionner un restaurant</option>
+            {restaurants.map(r => (
+              <option key={r.id} value={r.id}>{r.nom}</option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {/* Toggle Mensuel / Quotidien */}
+      <div className="flex items-center gap-2 bg-secondary p-1 rounded-lg w-fit">
+        <button
+          onClick={() => setPeriode("mensuel")}
+          className={`px-4 py-2 rounded font-medium transition-colors ${
+            periode === "mensuel"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          📊 Mensuel
+        </button>
+        <button
+          onClick={() => setPeriode("quotidien")}
+          className={`px-4 py-2 rounded font-medium transition-colors ${
+            periode === "quotidien"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          📅 Quotidien
+        </button>
+      </div>
+
+      {/* Contenu */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-muted-foreground">Chargement...</div>
+        </div>
+      ) : !data ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-muted-foreground">Aucune donnée disponible</div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* KPIs */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <KPICard
+              label="CA Budget"
+              value={data.kpis?.ca_budget || 0}
+              color="blue"
+            />
+            <KPICard
+              label="CA Réel"
+              value={data.kpis?.ca_reel || 0}
+              color="purple"
+            />
+            <KPICard
+              label="Écart CA"
+              value={data.kpis?.ecart_ca || 0}
+              subtext={`${data.kpis?.ecart_ca_pct?.toFixed(1) || 0}%`}
+              color={data.kpis?.ecart_ca >= 0 ? "green" : "red"}
+            />
+            <KPICard
+              label="Écart Food Cost"
+              value={data.kpis?.ecart_food || 0}
+              color={data.kpis?.ecart_food <= 0 ? "green" : "red"}
+            />
+          </div>
+
+          {/* Tableau Mensuel */}
+          {periode === "mensuel" && data.donnees_mensuelles && (
+            <div className="bg-card rounded-lg border border-border p-6">
+              <h3 className="text-lg font-medium mb-4">📊 Budget vs Réel - Groupe</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="border-b border-border">
+                    <tr>
+                      <th className="text-left py-2 px-4">Mois</th>
+                      <th className="text-right py-2 px-4">CA Budget</th>
+                      <th className="text-right py-2 px-4">CA Réel</th>
+                      <th className="text-right py-2 px-4">Écart</th>
+                      <th className="text-right py-2 px-4">Écart %</th>
+                      <th className="text-center py-2 px-4">Atteinte</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.donnees_mensuelles.map((m, idx) => (
+                      <tr key={idx} className="border-b border-border/30">
+                        <td className="py-2 px-4">{m.mois}</td>
+                        <td className="text-right py-2 px-4 font-mono text-blue-400">{fmtPrice(m.ca_budget)}</td>
+                        <td className="text-right py-2 px-4 font-mono text-purple-400">{fmtPrice(m.ca_reel)}</td>
+                        <td className={`text-right py-2 px-4 font-mono ${m.ecart >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {fmtPrice(m.ecart)}
+                        </td>
+                        <td className={`text-right py-2 px-4 font-mono ${m.ecart_pct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {m.ecart_pct.toFixed(1)}%
+                        </td>
+                        <td className="text-center py-2 px-4">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 bg-secondary rounded-full h-2">
+                              <div
+                                className={`h-2 rounded-full ${m.atteinte_pct >= 100 ? 'bg-green-500' : 'bg-red-500'}`}
+                                style={{ width: `${Math.min(m.atteinte_pct, 100)}%` }}
+                              />
+                            </div>
+                            <span className="text-xs font-mono">{m.atteinte_pct.toFixed(0)}%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Vue Quotidienne */}
+          {periode === "quotidien" && data.stats && (
+            <div className="space-y-6">
+              {/* Stats additionnelles */}
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                <div className="p-4 rounded-lg bg-secondary border border-border">
+                  <div className="text-xs uppercase opacity-70 mb-1">Budget Mois</div>
+                  <div className="text-lg font-bold">{fmtPrice(data.stats.budget_mois)}</div>
+                </div>
+                <div className="p-4 rounded-lg bg-secondary border border-border">
+                  <div className="text-xs uppercase opacity-70 mb-1">Budget/Jour</div>
+                  <div className="text-lg font-bold">{fmtPrice(data.stats.budget_jour_moyen)}</div>
+                </div>
+                <div className="p-4 rounded-lg bg-secondary border border-border">
+                  <div className="text-xs uppercase opacity-70 mb-1">Cumul J22</div>
+                  <div className="text-lg font-bold text-cyan-400">{fmtPrice(data.stats.cumul_ca)}</div>
+                </div>
+                <div className="p-4 rounded-lg bg-secondary border border-border">
+                  <div className="text-xs uppercase opacity-70 mb-1">Atteinte</div>
+                  <div className="text-lg font-bold text-green-400">{data.stats.atteinte_pct.toFixed(1)}%</div>
+                </div>
+                <div className="p-4 rounded-lg bg-secondary border border-border">
+                  <div className="text-xs uppercase opacity-70 mb-1">Reste</div>
+                  <div className="text-lg font-bold text-orange-400">{fmtPrice(data.stats.reste)}</div>
+                </div>
+                <div className="p-4 rounded-lg bg-secondary border border-border">
+                  <div className="text-xs uppercase opacity-70 mb-1">Obj/Jour Restant</div>
+                  <div className="text-lg font-bold">{fmtPrice(data.stats.obj_jour_restant)}</div>
+                </div>
+              </div>
+
+              {/* Calendrier quotidien */}
+              <div className="bg-card rounded-lg border border-border p-6">
+                <h3 className="text-lg font-medium mb-4">📅 Calendrier Quotidien</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="border-b border-border">
+                      <tr>
+                        <th className="text-left py-2 px-2">Jour</th>
+                        <th className="text-right py-2 px-2">CA Jour</th>
+                        <th className="text-right py-2 px-2">Écart/j</th>
+                        <th className="text-right py-2 px-2">Cumul</th>
+                        <th className="text-right py-2 px-2">Écart Cum.</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.donnees_quotidiennes?.map((j, idx) => (
+                        <tr key={idx} className="border-b border-border/30">
+                          <td className="py-1 px-2">{j.jour}</td>
+                          <td className="text-right py-1 px-2 font-mono">{fmtPrice(j.ca_jour)}</td>
+                          <td className={`text-right py-1 px-2 font-mono ${j.ecart_jour >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {fmtPrice(j.ecart_jour)}
+                          </td>
+                          <td className="text-right py-1 px-2 font-mono text-cyan-400">{fmtPrice(j.cumul)}</td>
+                          <td className={`text-right py-1 px-2 font-mono ${j.ecart_cumul >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {fmtPrice(j.ecart_cumul)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Barre de progression */}
+                <div className="mt-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm">Progression mois</span>
+                    <span className="text-sm font-medium">
+                      {data.stats.atteinte_pct.toFixed(1)}% atteint en {data.stats.jour_actuel}/{data.stats.nb_jours_mois} jours
+                    </span>
+                  </div>
+                  <div className="bg-secondary rounded-full h-3">
+                    <div
+                      className={`h-3 rounded-full ${data.stats.en_avance ? 'bg-green-500' : 'bg-red-500'}`}
+                      style={{ width: `${Math.min(data.stats.atteinte_pct, 100)}%` }}
+                    />
+                  </div>
+                  <div className="text-right text-xs mt-1 text-green-400">
+                    {data.stats.en_avance ? "✓ En avance" : "⚠ En retard"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ====================== IMPORT VENTES ======================
 
 const ImportModule = ({ restaurants, onRefresh }) => {
