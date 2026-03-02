@@ -336,6 +336,7 @@ const Sidebar = ({ collapsed, setCollapsed, activeModule, setActiveModule, resta
     { id: "carte", label: "Carte & Produits", icon: UtensilsCrossed, pole: "MENU" },
     { id: "fiches", label: "Fiches Techniques", icon: FileText, pole: "MENU" },
     { id: "achats", label: "Produits achats", icon: Package, pole: "ACHATS" },
+    { id: "budget-vs-reel", label: "Budget vs Réel", icon: TrendingUp, pole: "GROUPE" },
     { id: "import", label: "Import Données", icon: UploadCloud, pole: "OUTILS" },
   ];
 
