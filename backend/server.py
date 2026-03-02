@@ -1192,7 +1192,7 @@ async def confirm_import(data: dict):
     if ventes_docs:
         await db.ventes.insert_many(ventes_docs)
     
-    ca_total = sum(v["ca_ttc"] for v in ventes_docs)
+    ca_total = sum(v["ca_ht"] for v in ventes_docs)
     
     return {
         "success": True,
