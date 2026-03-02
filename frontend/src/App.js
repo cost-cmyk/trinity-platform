@@ -3543,17 +3543,17 @@ const BudgetVsReelModule = ({ restaurants }) => {
                           {fmtPrice(m.ecart)}
                         </td>
                         <td className={`text-right py-2 px-4 font-mono ${m.ecart_pct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {m.ecart_pct.toFixed(1)}%
+                          {(m.ecart_pct || 0).toFixed(1)}%
                         </td>
                         <td className="text-center py-2 px-4">
                           <div className="flex items-center gap-2">
                             <div className="flex-1 bg-secondary rounded-full h-2">
                               <div
                                 className={`h-2 rounded-full ${m.atteinte_pct >= 100 ? 'bg-green-500' : 'bg-red-500'}`}
-                                style={{ width: `${Math.min(m.atteinte_pct, 100)}%` }}
+                                style={{ width: `${Math.min(m.atteinte_pct || 0, 100)}%` }}
                               />
                             </div>
-                            <span className="text-xs font-mono">{m.atteinte_pct.toFixed(0)}%</span>
+                            <span className="text-xs font-mono">{(m.atteinte_pct || 0).toFixed(0)}%</span>
                           </div>
                         </td>
                       </tr>
