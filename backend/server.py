@@ -1324,6 +1324,22 @@ async def upload_and_import_file(
     # Calculer les stats
     ca_total = sum(v["ca_ht"] for v in ventes_docs)
     
+    # Créer l'enregistrement d'import
+    import_record = {
+        "id": import_id,
+        "type": "ventes",
+        "filename": filename,
+        "restaurant_id": restaurant_id,
+        "restaurant_nom": restaurant["nom"],
+        "date_import": datetime.now(timezone.utc).isoformat(),
+        "date_vente": date_vente,
+        "nb_lignes": len(ventes_docs),
+        "ca_total": round(ca_total, 2),
+        "statut": "complété",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.imports.insert_one(import_record)
+    
     return {
         "success": True,
         "import_id": import_id,
