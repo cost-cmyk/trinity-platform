@@ -2260,6 +2260,127 @@ async def get_familles_by_restaurant(restaurant_id: str):
         logger.error(f"Erreur get_familles_by_restaurant: {e}")
         return ["Entrées", "Plats", "Desserts", "Boissons"]
 
+# ====================== BUDGET VS RÉEL DASHBOARD ======================
+
+@api_router.get("/dashboard/budget-vs-reel/groupe/mensuel")
+async def get_budget_vs_reel_groupe_mensuel(mois: str):
+    """
+    Dashboard Budget vs Réel - Vue Groupe Mensuelle
+    Retourne les données pour les 6 derniers mois (mois sélectionné + 5 précédents)
+    """
+    try:
+        # Parser le mois sélectionné (format: YYYY-MM)
+        mois_dt = datetime.strptime(mois, "%Y-%m")
+        
+        # Générer la liste des 6 mois (mois actuel et 5 précédents)
+        mois_list = []
+        for i in range(5, -1, -1):
+            m = mois_dt - relativedelta(months=i)
+            mois_list.append(m.strftime("%Y-%m"))
+        
+        # Récupérer tous les budgets pour ces mois
+        budgets_data = await db.budgets.find(
+            {"mois": {"$in": mois_list}},
+            {"_id": 0}
+        ).to_list(10000)
+        
+        # Récupérer toutes les ventes pour ces mois
+        # Extraire le mois depuis date_vente (format: YYYY-MM-DD)
+        ventes_data = []
+        for m in mois_list:
+            year, month = m.split("-")
+            ventes = await db.ventes.find(
+                {
+                    "date_vente": {
+                        "$regex": f"^{year}-{month.zfill(2)}"
+                    }
+                },
+                {"_id": 0}
+            ).to_list(100000)
+            ventes_data.extend(ventes)
+        
+        # Agréger par mois
+        resultats_mensuels = []
+        
+        for m in mois_list:
+            # Budget du mois
+            budgets_mois = [b for b in budgets_data if b.get("mois") == m]
+            ca_budget = sum(b.get("ca_budget", 0) for b in budgets_mois)
+            
+            # CA Réel du mois (depuis les ventes)
+            year, month = m.split("-")
+            ventes_mois = [v for v in ventes_data if v.get("date_vente", "").startswith(f"{year}-{month.zfill(2)}")]
+            ca_reel = sum(v.get("ca_ht", 0) for v in ventes_mois)
+            
+            # Calculs
+            ecart = ca_reel - ca_budget
+            ecart_pct = (ecart / ca_budget * 100) if ca_budget > 0 else 0
+            atteinte_pct = (ca_reel / ca_budget * 100) if ca_budget > 0 else 0
+            
+            resultats_mensuels.append({
+                "mois": m,
+                "ca_budget": round(ca_budget, 2),
+                "ca_reel": round(ca_reel, 2),
+                "ecart": round(ecart, 2),
+                "ecart_pct": round(ecart_pct, 2),
+                "atteinte_pct": round(atteinte_pct, 2)
+            })
+        
+        # KPIs du mois sélectionné
+        mois_actuel = resultats_mensuels[-1] if resultats_mensuels else {}
+        
+        # Calculer le Food Cost du mois sélectionné
+        # Utiliser la logique existante de /api/cout-theorique
+        year, month = mois.split("-")
+        
+        # Récupérer toutes les fiches techniques
+        fiches = await db.fiches_techniques.find({}, {"_id": 0}).to_list(10000)
+        fiches_map = {f["code"]: f for f in fiches if f.get("code")}
+        
+        # Calculer le coût pour les ventes du mois
+        ventes_mois_actuel = [v for v in ventes_data if v.get("date_vente", "").startswith(f"{year}-{month.zfill(2)}")]
+        
+        cout_food_total = 0
+        ca_food_total = 0
+        
+        for vente in ventes_mois_actuel:
+            code_pro = vente.get("code_pro", "")
+            qte = vente.get("quantite", 0)
+            ca_ht = vente.get("ca_ht", 0)
+            
+            if code_pro in fiches_map:
+                fiche = fiches_map[code_pro]
+                cout_unitaire = fiche.get("cout_matiere_ht", 0)
+                cout_food_total += cout_unitaire * qte
+                ca_food_total += ca_ht
+        
+        # Food Cost Budget estimé (exemple: 30% du CA Budget)
+        # TODO: À remplacer par des vraies données budget food cost si disponibles
+        food_budget = mois_actuel.get("ca_budget", 0) * 0.30
+        food_reel = cout_food_total
+        ecart_food = food_reel - food_budget
+        
+        return {
+            "success": True,
+            "mois_selectionne": mois,
+            "kpis": {
+                "ca_budget": round(mois_actuel.get("ca_budget", 0), 2),
+                "ca_reel": round(mois_actuel.get("ca_reel", 0), 2),
+                "ecart_ca": round(mois_actuel.get("ecart", 0), 2),
+                "ecart_ca_pct": round(mois_actuel.get("ecart_pct", 0), 2),
+                "food_budget": round(food_budget, 2),
+                "food_reel": round(food_reel, 2),
+                "ecart_food": round(ecart_food, 2)
+            },
+            "donnees_mensuelles": resultats_mensuels
+        }
+        
+    except Exception as e:
+        logger.error(f"Erreur get_budget_vs_reel_groupe_mensuel: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ====================== HEALTH ======================
 
 @api_router.get("/")
