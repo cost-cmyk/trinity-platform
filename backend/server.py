@@ -1656,41 +1656,120 @@ def parse_budget_xlsx(file_content: bytes, filename: str, mois: str) -> List[dic
     
     try:
         wb = openpyxl.load_workbook(io.BytesIO(file_content), data_only=True)
+        logger.info(f"📊 Budget parser - Feuilles trouvées: {wb.sheetnames}")
         
-        # Ignorer la feuille de synthèse, parcourir les feuilles de détails
+        # Parcourir TOUTES les feuilles et analyser leur structure
         for sheet_name in wb.sheetnames:
-            if "Budget CA -" not in sheet_name or "Synthèse" in sheet_name:
+            logger.info(f"📄 Analyse de la feuille: '{sheet_name}'")
+            
+            # Ignorer les feuilles de synthèse
+            if "Synthèse" in sheet_name or "Recap" in sheet_name or "Total" in sheet_name:
+                logger.info(f"   ⏭️  Ignorée (feuille de synthèse)")
                 continue
             
             sheet = wb[sheet_name]
             
-            # Extraire le nom du restaurant du nom de la feuille
-            parts = sheet_name.split(" - ")
-            restaurant_nom = parts[1].strip() if len(parts) > 1 else sheet_name
+            # Déterminer le nom du restaurant depuis le nom de la feuille
+            # Patterns: "Budget CA - Matignon" ou "Matignon" ou "CA Matignon"
+            restaurant_nom = None
             
-            # Trouver la ligne d'en-tête (Jour, Date, CA Budget...)
+            if " - " in sheet_name:
+                parts = sheet_name.split(" - ")
+                restaurant_nom = parts[-1].strip()  # Prendre la dernière partie
+            elif "Budget" in sheet_name:
+                # Extraire le nom après "Budget"
+                restaurant_nom = sheet_name.replace("Budget", "").replace("CA", "").strip()
+            else:
+                # Utiliser le nom de la feuille tel quel
+                restaurant_nom = sheet_name.strip()
+            
+            if not restaurant_nom:
+                logger.warning(f"   ⚠️  Impossible d'extraire le nom du restaurant")
+                continue
+            
+            logger.info(f"   🏪 Restaurant détecté: {restaurant_nom}")
+            
+            # Trouver la ligne d'en-tête - chercher "Jour" ou "Date" dans les 15 premières lignes
             header_row = None
-            for i, row in enumerate(sheet.iter_rows(min_row=1, max_row=10, values_only=True), start=1):
-                if row and "Jour" in str(row):
+            header_cells = None
+            
+            for i, row in enumerate(sheet.iter_rows(min_row=1, max_row=15, values_only=True), start=1):
+                if not row:
+                    continue
+                
+                row_str = ' '.join([str(cell).lower() if cell else '' for cell in row])
+                
+                # Chercher "Jour" OU "Date" dans la ligne
+                if "jour" in row_str or ("date" in row_str and "budget" in row_str):
                     header_row = i
+                    header_cells = row
+                    logger.info(f"   📍 En-tête trouvée à la ligne {i}: {row[:6]}")
                     break
             
             if not header_row:
+                logger.warning(f"   ⚠️  Pas d'en-tête trouvée, feuille ignorée")
                 continue
             
+            # Identifier les colonnes
+            # Chercher les indices des colonnes importantes
+            col_jour = None
+            col_date = None
+            col_budget = None
+            col_reel = None
+            
+            for idx, cell in enumerate(header_cells):
+                cell_str = str(cell).lower() if cell else ''
+                
+                if "jour" in cell_str and col_jour is None:
+                    col_jour = idx
+                elif "date" in cell_str and col_date is None:
+                    col_date = idx
+                elif "budget" in cell_str and col_budget is None:
+                    col_budget = idx
+                elif "réel" in cell_str or "reel" in cell_str:
+                    col_reel = idx
+            
+            logger.info(f"   📊 Colonnes: Jour={col_jour}, Date={col_date}, Budget={col_budget}, Réel={col_reel}")
+            
+            # Si on n'a pas trouvé la colonne budget, essayer un mapping par position
+            if col_budget is None:
+                logger.warning("   ⚠️  Colonne Budget non trouvée, utilisation de la position par défaut (col 2)")
+                col_budget = 2
+            
+            if col_date is None and col_jour is not None:
+                col_date = col_jour + 1  # Date généralement après Jour
+            
             # Lire les données
+            lignes_extraites = 0
             for row in sheet.iter_rows(min_row=header_row + 1, values_only=True):
-                if not row or not row[0]:
+                if not row or not any(row):  # Ignorer lignes vides
                     continue
                 
-                jour = str(row[0]).strip()
+                # Première cellule avec du texte
+                first_cell = None
+                for cell in row:
+                    if cell:
+                        first_cell = str(cell).strip()
+                        break
                 
-                # Ignorer les lignes TOTAL
-                if jour.upper() == "TOTAL":
+                if not first_cell:
+                    continue
+                
+                # Ignorer les lignes TOTAL, Sous-total, etc.
+                if any(keyword in first_cell.upper() for keyword in ["TOTAL", "SOUS-TOTAL", "MOYENNE"]):
+                    logger.info(f"      🛑 Ligne '{first_cell}' atteinte, fin de l'extraction")
                     break
                 
                 try:
-                    date_val = row[1]
+                    # Extraire jour
+                    jour = first_cell if col_jour is not None else first_cell
+                    
+                    # Extraire date
+                    date_val = row[col_date] if col_date is not None and len(row) > col_date else None
+                    
+                    if not date_val:
+                        continue
+                    
                     if isinstance(date_val, datetime):
                         date_str = date_val.strftime("%Y-%m-%d")
                     else:
@@ -1699,14 +1778,22 @@ def parse_budget_xlsx(file_content: bytes, filename: str, mois: str) -> List[dic
                         if len(date_parts) == 3:
                             date_str = f"{date_parts[2]}-{date_parts[1].zfill(2)}-{date_parts[0].zfill(2)}"
                         else:
+                            logger.warning(f"         ⚠️  Format de date invalide: {date_val}")
                             continue
                     
-                    ca_budget = float(row[2]) if row[2] else 0
-                    ca_reel = float(row[3]) if len(row) > 3 and row[3] else 0
-                    ecart = float(row[4]) if len(row) > 4 and row[4] else 0
-                    ecart_pct = float(row[5]) if len(row) > 5 and row[5] else 0
+                    # Extraire CA Budget
+                    ca_budget_val = row[col_budget] if len(row) > col_budget else None
+                    ca_budget = float(ca_budget_val) if ca_budget_val else 0
                     
-                    budgets.append({
+                    # Extraire CA Réel (optionnel)
+                    ca_reel_val = row[col_reel] if col_reel is not None and len(row) > col_reel else None
+                    ca_reel = float(ca_reel_val) if ca_reel_val else 0
+                    
+                    # Calculer écarts
+                    ecart = ca_reel - ca_budget if ca_budget > 0 else 0
+                    ecart_pct = (ecart / ca_budget * 100) if ca_budget > 0 else 0
+                    
+                    budget_item = {
                         "restaurant_nom": restaurant_nom,
                         "jour": jour,
                         "date": date_str,
@@ -1714,16 +1801,23 @@ def parse_budget_xlsx(file_content: bytes, filename: str, mois: str) -> List[dic
                         "ca_reel": ca_reel,
                         "ecart": ecart,
                         "ecart_pct": ecart_pct
-                    })
+                    }
+                    budgets.append(budget_item)
+                    lignes_extraites += 1
                 
-                except (ValueError, IndexError, AttributeError) as e:
-                    logging.warning(f"Erreur parsing ligne budget: {e}")
+                except (ValueError, IndexError, AttributeError, TypeError) as e:
+                    logger.warning(f"         ❌ Erreur parsing ligne: {e}")
                     continue
+            
+            logger.info(f"   ✅ {lignes_extraites} lignes extraites pour {restaurant_nom}")
         
+        logger.info(f"✅ PARSING TERMINÉ - Total: {len(budgets)} budgets, {len(set(b['restaurant_nom'] for b in budgets))} restaurants")
         return budgets
         
     except Exception as e:
-        logging.error(f"Erreur parse_budget_xlsx: {e}")
+        logger.error(f"❌ Erreur parse_budget_xlsx: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         raise
 
 
