@@ -3507,7 +3507,7 @@ const BudgetVsReelModule = ({ restaurants }) => {
             <KPICard
               label="Écart CA"
               value={data.kpis?.ecart_ca || 0}
-              subtext={`${data.kpis?.ecart_ca_pct?.toFixed(1) || 0}%`}
+              subtext={`${(data.kpis?.ecart_ca_pct || 0).toFixed(1)}%`}
               color={data.kpis?.ecart_ca >= 0 ? "green" : "red"}
             />
             <KPICard
