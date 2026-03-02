@@ -3355,6 +3355,13 @@ const ImportModule = ({ restaurants, onRefresh }) => {
   const [achatsLoading, setAchatsLoading] = useState(false);
   const [achatsFile, setAchatsFile] = useState(null);
   const [achatsRestaurant, setAchatsRestaurant] = useState(null);
+  
+  // État BUDGET
+  const [budgetPreview, setBudgetPreview] = useState(null);
+  const [budgetLoading, setBudgetLoading] = useState(false);
+  const [budgetFile, setBudgetFile] = useState(null);
+  const [budgetMois, setBudgetMois] = useState("");
+
 
   // Charger l'historique des imports
   useEffect(() => {
