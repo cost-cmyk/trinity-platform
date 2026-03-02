@@ -4251,6 +4251,93 @@ const ImportModule = ({ restaurants, onRefresh }) => {
           </div>
         </div>
       )}
+
+      {activeTab === "budget" && (
+        <div className="space-y-4">
+          <div className="trinity-card">
+            <h3 className="text-lg font-medium mb-4">Import Budget CA Mensuel</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Format Excel (.xlsx) avec les feuilles "Budget CA - [Restaurant] - [Mois]"
+            </p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Mois du Budget *</label>
+                <input
+                  type="month"
+                  value={budgetMois || ""}
+                  onChange={(e) => setBudgetMois(e.target.value)}
+                  className="w-full p-2 bg-background border border-border rounded-md"
+                  disabled={budgetLoading || importing}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Fichier Budget</label>
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  onChange={handleBudgetFile}
+                  disabled={budgetLoading || importing || !budgetMois}
+                />
+              </div>
+            </div>
+            
+            {budgetLoading && (
+              <div className="text-center py-8">
+                <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">Analyse du fichier...</p>
+              </div>
+            )}
+            
+            {budgetPreview && !budgetLoading && (
+              <div className="space-y-4 mt-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <KPICard label="Restaurants" value={budgetPreview.nb_restaurants} color="#3b82f6" />
+                  <KPICard label="Lignes" value={budgetPreview.nb_lignes} color="#10b981" />
+                  <KPICard label="Budget Total" value={`${Math.round(budgetPreview.total_budget / 1000)}k F`} color="#f59e0b" />
+                </div>
+                
+                <div className="trinity-card bg-secondary/30 max-h-96 overflow-y-auto">
+                  <h4 className="font-medium mb-2">Aperçu du budget</h4>
+                  <table className="w-full text-sm">
+                    <thead className="border-b border-border sticky top-0 bg-secondary/50">
+                      <tr>
+                        <th className="text-left py-2">Restaurant</th>
+                        <th className="text-left">Date</th>
+                        <th className="text-right">CA Budget</th>
+                        <th className="text-right">CA Réel</th>
+                        <th className="text-right">Écart %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {budgetPreview.budgets.slice(0, 50).map((b, idx) => (
+                        <tr key={idx} className="border-b border-border/30">
+                          <td className="py-1">{b.restaurant_nom}</td>
+                          <td>{b.date}</td>
+                          <td className="text-right font-mono">{fmtPrice(b.ca_budget)}</td>
+                          <td className="text-right font-mono">{b.ca_reel > 0 ? fmtPrice(b.ca_reel) : "—"}</td>
+                          <td className="text-right font-mono">{b.ecart_pct !== 0 ? `${b.ecart_pct.toFixed(1)}%` : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                <div className="flex justify-end gap-2">
+                  <Button variant="secondary" onClick={() => {setBudgetPreview(null); setBudgetFile(null);}}>
+                    Annuler
+                  </Button>
+                  <Button onClick={confirmBudgetImport} disabled={importing}>
+                    {importing ? "Import en cours..." : `Valider l'import (${budgetPreview.nb_lignes} lignes)`}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
