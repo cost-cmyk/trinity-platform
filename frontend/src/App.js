@@ -3345,13 +3345,13 @@ const BudgetVsReelModule = ({ restaurants }) => {
       let endpoint = "";
       
       if (vue === "groupe") {
-        endpoint = `/api/dashboard/budget-vs-reel/groupe/${periode}?mois=${moisSelectionne}`;
+        endpoint = `dashboard/budget-vs-reel/groupe/${periode}?mois=${moisSelectionne}`;
       } else {
         if (!restaurantSelectionne) return;
-        endpoint = `/api/dashboard/budget-vs-reel/restaurant/${restaurantSelectionne.id}/${periode}?mois=${moisSelectionne}`;
+        endpoint = `dashboard/budget-vs-reel/restaurant/${restaurantSelectionne.id}/${periode}?mois=${moisSelectionne}`;
       }
 
-      const res = await axios.get(`${API}/api${endpoint}`);
+      const res = await axios.get(`${API}/api/${endpoint}`);
       setData(res.data);
     } catch (err) {
       console.error("Erreur chargement données budget:", err);
