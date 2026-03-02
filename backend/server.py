@@ -2001,7 +2001,7 @@ async def get_restaurant_dashboard(restaurant_id: str, date: Optional[str] = Non
         {"$group": {
             "_id": "$produit_nom",
             "quantite": {"$sum": "$quantite"},
-            "ca": {"$sum": "$ca_ttc"}
+            "ca": {"$sum": "$ca_ht"}
         }},
         {"$sort": {"quantite": -1}},
         {"$limit": 10}
@@ -2013,7 +2013,7 @@ async def get_restaurant_dashboard(restaurant_id: str, date: Optional[str] = Non
         {"$group": {
             "_id": "$produit_nom",
             "quantite": {"$sum": "$quantite"},
-            "ca": {"$sum": "$ca_ttc"}
+            "ca": {"$sum": "$ca_ht"}
         }},
         {"$sort": {"quantite": -1}},
         {"$limit": 10}
@@ -2026,7 +2026,7 @@ async def get_restaurant_dashboard(restaurant_id: str, date: Optional[str] = Non
         {"$group": {
             "_id": "$produit_nom",
             "quantite": {"$sum": "$quantite"},
-            "ca": {"$sum": "$ca_ttc"}
+            "ca": {"$sum": "$ca_ht"}
         }},
         {"$sort": {"quantite": -1}},
         {"$limit": 10}
@@ -2038,7 +2038,7 @@ async def get_restaurant_dashboard(restaurant_id: str, date: Optional[str] = Non
         {"$group": {
             "_id": "$produit_nom",
             "quantite": {"$sum": "$quantite"},
-            "ca": {"$sum": "$ca_ttc"}
+            "ca": {"$sum": "$ca_ht"}
         }},
         {"$sort": {"quantite": -1}},
         {"$limit": 10}
