@@ -1243,6 +1243,10 @@ async def upload_and_import_file(
     else:
         ventes_data = parse_xlsx_file(content, file.filename)
     
+    logging.info(f"🔍 Ventes parsées: {len(ventes_data)} lignes")
+    if ventes_data:
+        logging.info(f"🔍 Première vente parsée: {ventes_data[0]}")
+    
     if not ventes_data:
         raise HTTPException(status_code=400, detail="Aucune donnée de vente trouvée dans le fichier")
     
@@ -1284,8 +1288,13 @@ async def upload_and_import_file(
         }
         ventes_docs.append(vente)
     
+    logging.info(f"🔍 Ventes à insérer: {len(ventes_docs)}")
     if ventes_docs:
-        await db.ventes.insert_many(ventes_docs)
+        logging.info(f"🔍 Première vente à insérer: famille='{ventes_docs[0].get('famille')}', code_pro='{ventes_docs[0].get('code_pro')}', ca_ht={ventes_docs[0].get('ca_ht')}")
+    
+    if ventes_docs:
+        result = await db.ventes.insert_many(ventes_docs)
+        logging.info(f"✅ {len(result.inserted_ids)} ventes insérées en DB")
     
     # Calculer les stats
     ca_total = sum(v["ca_ttc"] for v in ventes_docs)
