@@ -836,13 +836,13 @@ def parse_xls_file(file_content: bytes, filename: str) -> List[dict]:
                 famille_finale = ""
                 famille_col = col_mapping.get('famille')
                 if famille_col is not None and famille_col < len(row):
-                    famille_finale = str(row[famille_col]).strip()
+                    famille_finale = str(row[famille_col].value).strip()  # .value !
                 
                 # Extraire le code produit si disponible
                 code_pro = ""
                 code_col = col_mapping.get('code_pro')
                 if code_col is not None and code_col < len(row):
-                    code_pro = str(row[code_col]).strip()
+                    code_pro = str(row[code_col].value).strip()  # .value !
                 
                 ventes.append({
                     'produit_nom': designation,
