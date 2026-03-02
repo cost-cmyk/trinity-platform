@@ -1172,8 +1172,11 @@ async def confirm_import(data: dict):
             "quantite": l["quantite"],
             "prix_unitaire": l["prix_unitaire"],
             "ca_ttc": l["ca_ttc"],
+            "ca_ht": l.get("ca_ht", 0),  # NOUVEAU
             "remise": l["remise"],
             "is_food": l["is_food"],
+            "famille": l.get("famille", ""),  # NOUVEAU
+            "code_pro": l.get("code_pro", ""),  # NOUVEAU
             "import_id": import_id,
             "exclu": False,
             "annotation": l.get("annotation", ""),
