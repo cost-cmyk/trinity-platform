@@ -2032,6 +2032,196 @@ async def startup_db_client():
         logger.error("Application will continue but database operations may fail")
 
 @app.on_event("shutdown")
+
+
+# ====================== PARSER BUDGET ======================
+
+def parse_budget_xlsx(file_content: bytes, filename: str, mois: str) -> List[dict]:
+    """Parse un fichier budget Excel et extrait les données par restaurant et par jour"""
+    budgets = []
+    
+    try:
+        wb = openpyxl.load_workbook(BytesIO(file_content), data_only=True)
+        
+        # Ignorer la feuille de synthèse, parcourir les feuilles de détails
+        for sheet_name in wb.sheetnames:
+            if "Budget CA -" not in sheet_name or "Synthèse" in sheet_name:
+                continue
+            
+            sheet = wb[sheet_name]
+            
+            # Extraire le nom du restaurant du nom de la feuille
+            # Ex: "Budget CA - Meherio - Mars 2025" -> "Meherio"
+            parts = sheet_name.split(" - ")
+            restaurant_nom = parts[1].strip() if len(parts) > 1 else sheet_name
+            
+            # Trouver la ligne d'en-tête (Jour, Date, CA Budget...)
+            header_row = None
+            for i, row in enumerate(sheet.iter_rows(min_row=1, max_row=10, values_only=True), start=1):
+                if row and "Jour" in str(row):
+                    header_row = i
+                    break
+            
+            if not header_row:
+                continue
+            
+            # Lire les données
+            for row in sheet.iter_rows(min_row=header_row + 1, values_only=True):
+                if not row or not row[0]:
+                    continue
+                
+                jour = str(row[0]).strip()
+                
+                # Ignorer les lignes TOTAL
+                if jour.upper() == "TOTAL":
+                    break
+                
+                try:
+                    date_val = row[1]
+                    if isinstance(date_val, datetime):
+                        date_str = date_val.strftime("%Y-%m-%d")
+                    else:
+                        # Parser format DD/MM/YYYY
+                        date_parts = str(date_val).split("/")
+                        if len(date_parts) == 3:
+                            date_str = f"{date_parts[2]}-{date_parts[1].zfill(2)}-{date_parts[0].zfill(2)}"
+                        else:
+                            continue
+                    
+                    ca_budget = float(row[2]) if row[2] else 0
+                    ca_reel = float(row[3]) if len(row) > 3 and row[3] else 0
+                    ecart = float(row[4]) if len(row) > 4 and row[4] else 0
+                    ecart_pct = float(row[5]) if len(row) > 5 and row[5] else 0
+                    
+                    budgets.append({
+                        "restaurant_nom": restaurant_nom,
+                        "jour": jour,
+                        "date": date_str,
+                        "ca_budget": ca_budget,
+                        "ca_reel": ca_reel,
+                        "ecart": ecart,
+                        "ecart_pct": ecart_pct
+                    })
+                
+                except (ValueError, IndexError, AttributeError) as e:
+                    logging.warning(f"Erreur parsing ligne budget: {e}")
+                    continue
+        
+        return budgets
+        
+    except Exception as e:
+        logging.error(f"Erreur parse_budget_xlsx: {e}")
+        raise
+
+
+# ====================== IMPORT BUDGETS ======================
+
+@api_router.post("/imports/budget/preview")
+async def preview_budget_import(file: UploadFile = File(...), mois: str = Form(...)):
+    """Preview d'un fichier budget avant import"""
+    
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Nom de fichier manquant")
+    
+    filename = file.filename.lower()
+    if not filename.endswith('.xlsx'):
+        raise HTTPException(status_code=400, detail="Format non supporté. Utilisez .xlsx")
+    
+    if not mois:
+        raise HTTPException(status_code=400, detail="Mois requis (format: YYYY-MM)")
+    
+    content = await file.read()
+    
+    try:
+        budgets_data = parse_budget_xlsx(content, file.filename, mois)
+        
+        nb_restaurants = len(set(b["restaurant_nom"] for b in budgets_data))
+        total_budget = sum(b["ca_budget"] for b in budgets_data)
+        total_reel = sum(b.get("ca_reel", 0) for b in budgets_data)
+        
+        return {
+            "success": True,
+            "filename": file.filename,
+            "mois": mois,
+            "nb_restaurants": nb_restaurants,
+            "nb_lignes": len(budgets_data),
+            "total_budget": round(total_budget, 2),
+            "total_reel": round(total_reel, 2),
+            "budgets": budgets_data
+        }
+    except Exception as e:
+        logger.error(f"Erreur preview budget: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+@api_router.post("/imports/budget/confirm")
+async def confirm_budget_import(data: dict):
+    """Confirme l'import de budget après prévisualisation"""
+    
+    budgets_data = data.get("budgets", [])
+    mois = data.get("mois")
+    
+    if not budgets_data or not mois:
+        raise HTTPException(status_code=400, detail="Données manquantes")
+    
+    # Supprimer les anciens budgets du même mois
+    await db.budgets.delete_many({"mois": mois})
+    
+    # Créer l'enregistrement d'import
+    import_id = str(uuid.uuid4())
+    import_record = {
+        "id": import_id,
+        "type": "budget",
+        "mois": mois,
+        "nom_fichier": data.get("filename", "budget.xlsx"),
+        "date_import": datetime.now(timezone.utc).isoformat(),
+        "statut": "importé",
+        "nb_lignes": len(budgets_data)
+    }
+    await db.imports.insert_one(import_record)
+    
+    # Créer les budgets
+    budgets_docs = []
+    for b in budgets_data:
+        resto = await db.restaurants.find_one({"nom": b["restaurant_nom"]})
+        restaurant_id = resto["id"] if resto else None
+        
+        budget_doc = {
+            "id": str(uuid.uuid4()),
+            "import_id": import_id,
+            "mois": mois,
+            "restaurant_nom": b["restaurant_nom"],
+            "restaurant_id": restaurant_id,
+            "date": b["date"],
+            "jour": b["jour"],
+            "ca_budget": b["ca_budget"],
+            "ca_reel": b.get("ca_reel", 0),
+            "ecart": b.get("ecart", 0),
+            "ecart_pct": b.get("ecart_pct", 0),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        budgets_docs.append(budget_doc)
+    
+    if budgets_docs:
+        await db.budgets.insert_many(budgets_docs)
+    
+    return {
+        "success": True,
+        "nb_budgets_crees": len(budgets_docs),
+        "mois": mois
+    }
+
+@api_router.get("/budgets")
+async def get_budgets(mois: str = None, restaurant_id: str = None):
+    """Récupérer les budgets avec filtres optionnels"""
+    query = {}
+    if mois:
+        query["mois"] = mois
+    if restaurant_id:
+        query["restaurant_id"] = restaurant_id
+    
+    budgets = await db.budgets.find(query, {"_id": 0}).to_list(1000)
+    return budgets
+
 async def shutdown_db_client():
     """Close MongoDB connection on shutdown"""
     logger.info("Closing MongoDB connection...")
