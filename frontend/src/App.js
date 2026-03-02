@@ -3520,7 +3520,9 @@ const BudgetVsReelModule = ({ restaurants }) => {
           {/* Tableau Mensuel */}
           {periode === "mensuel" && data.donnees_mensuelles && (
             <div className="bg-card rounded-lg border border-border p-6">
-              <h3 className="text-lg font-medium mb-4">📊 Budget vs Réel - Groupe</h3>
+              <h3 className="text-lg font-medium mb-4">
+                📊 Budget vs Réel - {vue === "groupe" ? "Groupe" : (data.restaurant?.nom || restaurantSelectionne?.nom || "Restaurant")}
+              </h3>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="border-b border-border">
