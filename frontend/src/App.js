@@ -4367,7 +4367,7 @@ const ImportModule = ({ restaurants, onRefresh }) => {
                         <th className="text-left py-2">Restaurant</th>
                         <th className="text-left">Date</th>
                         <th className="text-right">CA Budget</th>
-                        <th className="text-right">CA Réel</th>
+                        <th className="text-right">CA 2025</th>
                         <th className="text-right">Écart %</th>
                       </tr>
                     </thead>
