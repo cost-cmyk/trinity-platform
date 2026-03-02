@@ -715,7 +715,7 @@ def parse_xls_file(file_content: bytes, filename: str) -> List[dict]:
             'ca_ttc': ['ca ttc', 'ca  ttc', 'cattc', 'montant ttc', 'total ttc'],
             'ca_ht': ['ca ht', 'caht', 'montant ht'],
             'remise': ['remise', 'rem', 'réduction', 'reduction', 'rabais', 'montant total de remise', 'total de remise'],
-            'famille': ['famille', 'catégorie', 'categorie', 'type', 'groupe'],
+            'famille': ['famille', 'catégorie', 'categorie', 'groupe'],
             'fournisseur': ['fournisseur', 'type produit']  # BOISSON ou NOURRITURE
         }
         
@@ -892,7 +892,7 @@ def parse_xlsx_file(file_content: bytes, filename: str) -> List[dict]:
             'ca_ttc': ['ca ttc', 'ca  ttc', 'cattc', 'montant ttc', 'total ttc'],
             'ca_ht': ['ca ht', 'caht', 'montant ht'],
             'remise': ['remise', 'rem', 'réduction', 'reduction', 'rabais', 'montant total de remise'],
-            'famille': ['famille', 'catégorie', 'categorie', 'type', 'groupe'],
+            'famille': ['famille', 'catégorie', 'categorie', 'groupe'],
             'fournisseur': ['fournisseur', 'type produit']
         }
         
