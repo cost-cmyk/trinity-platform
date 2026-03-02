@@ -2486,6 +2486,240 @@ async def get_budget_vs_reel_groupe_quotidien(mois: str):
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.get("/dashboard/budget-vs-reel/restaurant/{restaurant_id}/mensuel")
+async def get_budget_vs_reel_restaurant_mensuel(restaurant_id: str, mois: str):
+    """
+    Dashboard Budget vs Réel - Vue Restaurant Mensuelle
+    Retourne les données pour un restaurant spécifique sur 6 mois
+    """
+    try:
+        # Récupérer le restaurant
+        restaurant = await db.restaurants.find_one({"id": restaurant_id}, {"_id": 0})
+        if not restaurant:
+            raise HTTPException(status_code=404, detail="Restaurant non trouvé")
+        
+        restaurant_nom = restaurant["nom"]
+        
+        # Parser le mois sélectionné
+        mois_dt = datetime.strptime(mois, "%Y-%m")
+        
+        # Générer les 6 derniers mois
+        mois_list = []
+        for i in range(5, -1, -1):
+            m = mois_dt - relativedelta(months=i)
+            mois_list.append(m.strftime("%Y-%m"))
+        
+        # Récupérer fiches techniques pour calcul food cost
+        fiches = await db.fiches_techniques.find(
+            {"restaurant_id": restaurant_id},
+            {"_id": 0}
+        ).to_list(10000)
+        fiches_map = {f["code"]: f for f in fiches if f.get("code")}
+        
+        # Agréger par mois
+        resultats_mensuels = []
+        
+        for m in mois_list:
+            year, month = m.split("-")
+            
+            # Budget du mois pour ce restaurant
+            budgets_mois = await db.budgets.find(
+                {"mois": m, "restaurant_id": restaurant_id},
+                {"_id": 0}
+            ).to_list(1000)
+            
+            ca_budget = sum(b.get("ca_budget", 0) for b in budgets_mois)
+            
+            # Ventes du mois pour ce restaurant
+            ventes_mois = await db.ventes.find(
+                {
+                    "restaurant_id": restaurant_id,
+                    "date_vente": {"$regex": f"^{year}-{month.zfill(2)}"}
+                },
+                {"_id": 0}
+            ).to_list(10000)
+            
+            ca_reel = sum(v.get("ca_ht", 0) for v in ventes_mois)
+            
+            # Calcul Food Cost
+            food_reel = 0
+            for vente in ventes_mois:
+                code_pro = vente.get("code_pro", "")
+                qte = vente.get("quantite", 0)
+                if code_pro in fiches_map:
+                    cout_unitaire = fiches_map[code_pro].get("cout_matiere_ht", 0)
+                    food_reel += cout_unitaire * qte
+            
+            # Food Budget estimé (30% du CA Budget)
+            food_budget = ca_budget * 0.30
+            
+            # Calculs
+            ecart_ca = ca_reel - ca_budget
+            ecart_ca_pct = (ecart_ca / ca_budget * 100) if ca_budget > 0 else 0
+            
+            ecart_food = food_reel - food_budget
+            ecart_food_pct = (ecart_food / food_budget * 100) if food_budget > 0 else 0
+            
+            # Résultat net (simplifié: CA - Food Cost)
+            resultat_net = ca_reel - food_reel
+            
+            resultats_mensuels.append({
+                "mois": m,
+                "ca_budget": round(ca_budget, 2),
+                "ca_reel": round(ca_reel, 2),
+                "ecart_ca": round(ecart_ca, 2),
+                "ecart_ca_pct": round(ecart_ca_pct, 2),
+                "food_budget": round(food_budget, 2),
+                "food_reel": round(food_reel, 2),
+                "ecart_food": round(ecart_food, 2),
+                "ecart_food_pct": round(ecart_food_pct, 2),
+                "resultat_net": round(resultat_net, 2)
+            })
+        
+        # KPIs du mois sélectionné
+        mois_actuel = resultats_mensuels[-1] if resultats_mensuels else {}
+        
+        return {
+            "success": True,
+            "restaurant": {
+                "id": restaurant_id,
+                "nom": restaurant_nom
+            },
+            "mois_selectionne": mois,
+            "kpis": {
+                "ca_budget": round(mois_actuel.get("ca_budget", 0), 2),
+                "ca_reel": round(mois_actuel.get("ca_reel", 0), 2),
+                "ecart_ca": round(mois_actuel.get("ecart_ca", 0), 2),
+                "ecart_ca_pct": round(mois_actuel.get("ecart_ca_pct", 0), 2),
+                "food_budget": round(mois_actuel.get("food_budget", 0), 2),
+                "food_reel": round(mois_actuel.get("food_reel", 0), 2),
+                "ecart_food": round(mois_actuel.get("ecart_food", 0), 2)
+            },
+            "donnees_mensuelles": resultats_mensuels
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erreur get_budget_vs_reel_restaurant_mensuel: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/dashboard/budget-vs-reel/restaurant/{restaurant_id}/quotidien")
+async def get_budget_vs_reel_restaurant_quotidien(restaurant_id: str, mois: str):
+    """
+    Dashboard Budget vs Réel - Vue Restaurant Quotidienne
+    Retourne les données jour par jour pour un restaurant
+    """
+    try:
+        # Récupérer le restaurant
+        restaurant = await db.restaurants.find_one({"id": restaurant_id}, {"_id": 0})
+        if not restaurant:
+            raise HTTPException(status_code=404, detail="Restaurant non trouvé")
+        
+        # Parser le mois
+        mois_dt = datetime.strptime(mois, "%Y-%m")
+        year = mois_dt.year
+        month = mois_dt.month
+        
+        # Nombre de jours
+        if month == 12:
+            next_month = mois_dt.replace(year=year + 1, month=1)
+        else:
+            next_month = mois_dt.replace(month=month + 1)
+        
+        nb_jours_mois = (next_month - mois_dt).days
+        
+        # Budgets du mois
+        budgets_data = await db.budgets.find(
+            {"mois": mois, "restaurant_id": restaurant_id},
+            {"_id": 0}
+        ).to_list(1000)
+        
+        # Ventes du mois
+        ventes_data = await db.ventes.find(
+            {
+                "restaurant_id": restaurant_id,
+                "date_vente": {"$regex": f"^{year}-{str(month).zfill(2)}"}
+            },
+            {"_id": 0}
+        ).to_list(10000)
+        
+        # Budget total
+        ca_budget_mois = sum(b.get("ca_budget", 0) for b in budgets_data)
+        ca_budget_jour_moyen = ca_budget_mois / nb_jours_mois if nb_jours_mois > 0 else 0
+        
+        # Données quotidiennes
+        donnees_quotidiennes = []
+        cumul_ca = 0
+        cumul_ecart = 0
+        
+        for jour in range(1, nb_jours_mois + 1):
+            date_str = f"{year}-{str(month).zfill(2)}-{str(jour).zfill(2)}"
+            
+            budgets_jour = [b for b in budgets_data if b.get("date") == date_str]
+            ca_budget_jour = sum(b.get("ca_budget", 0) for b in budgets_jour)
+            
+            ventes_jour = [v for v in ventes_data if v.get("date_vente") == date_str]
+            ca_reel_jour = sum(v.get("ca_ht", 0) for v in ventes_jour)
+            
+            ecart_jour = ca_reel_jour - ca_budget_jour
+            cumul_ca += ca_reel_jour
+            cumul_ecart += ecart_jour
+            
+            donnees_quotidiennes.append({
+                "jour": jour,
+                "date": date_str,
+                "ca_jour": round(ca_reel_jour, 2),
+                "ecart_jour": round(ecart_jour, 2),
+                "cumul": round(cumul_ca, 2),
+                "ecart_cumul": round(cumul_ecart, 2)
+            })
+        
+        # Stats
+        jour_actuel = len([d for d in donnees_quotidiennes if d["ca_jour"] > 0])
+        if jour_actuel == 0:
+            jour_actuel = 1
+        
+        atteinte_pct = (cumul_ca / ca_budget_mois * 100) if ca_budget_mois > 0 else 0
+        reste = ca_budget_mois - cumul_ca
+        jours_restants = nb_jours_mois - jour_actuel
+        obj_jour_restant = reste / jours_restants if jours_restants > 0 else 0
+        
+        budget_cumul_theorique = ca_budget_jour_moyen * jour_actuel
+        en_avance = cumul_ca >= budget_cumul_theorique
+        
+        return {
+            "success": True,
+            "restaurant": {
+                "id": restaurant_id,
+                "nom": restaurant["nom"]
+            },
+            "mois": mois,
+            "stats": {
+                "budget_mois": round(ca_budget_mois, 2),
+                "budget_jour_moyen": round(ca_budget_jour_moyen, 2),
+                "cumul_ca": round(cumul_ca, 2),
+                "cumul_ecart": round(cumul_ecart, 2),
+                "atteinte_pct": round(atteinte_pct, 2),
+                "reste": round(reste, 2),
+                "obj_jour_restant": round(obj_jour_restant, 2),
+                "jour_actuel": jour_actuel,
+                "nb_jours_mois": nb_jours_mois,
+                "en_avance": en_avance
+            },
+            "donnees_quotidiennes": donnees_quotidiennes
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erreur get_budget_vs_reel_restaurant_quotidien: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ====================== HEALTH ======================
 
 @api_router.get("/")
