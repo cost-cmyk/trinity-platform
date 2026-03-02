@@ -3351,8 +3351,8 @@ const BudgetVsReelModule = ({ restaurants }) => {
         endpoint = `dashboard/budget-vs-reel/restaurant/${restaurantSelectionne.id}/${periode}?mois=${moisSelectionne}`;
       }
 
-      console.log("🔍 Budget API URL:", `${API}/api/${endpoint}`);
-      const res = await axios.get(`${API}/api/${endpoint}`);
+      console.log("🔍 Budget API URL:", `${API}/${endpoint}`);
+      const res = await axios.get(`${API}/${endpoint}`);
       setData(res.data);
     } catch (err) {
       console.error("Erreur chargement données budget:", err);
