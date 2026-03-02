@@ -1905,7 +1905,7 @@ async def get_restaurants_stats():
             {"$match": {"restaurant_id": resto["id"]}},
             {"$group": {
                 "_id": None,
-                "ca_total": {"$sum": "$ca_ttc"},
+                "ca_total": {"$sum": "$ca_ht"},
                 "nb_ventes": {"$sum": 1}
             }}
         ]
