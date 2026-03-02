@@ -3687,9 +3687,12 @@ const ImportModule = ({ restaurants, onRefresh }) => {
                   />
                 </th>
                 <th>Produit</th>
+                <th>Famille</th>
+                <th>Code Pro</th>
                 <th>Type</th>
                 <th className="text-right">Qté</th>
                 <th className="text-right">PU</th>
+                <th className="text-right">CA HT</th>
                 <th className="text-right">CA TTC</th>
                 <th className="text-right">Remise</th>
                 <th className="w-20">Note</th>
@@ -3713,6 +3716,8 @@ const ImportModule = ({ restaurants, onRefresh }) => {
                       />
                     </td>
                     <td className="font-medium">{ligne.produit_nom}</td>
+                    <td className="text-sm text-muted-foreground">{ligne.famille || '—'}</td>
+                    <td className="text-sm text-muted-foreground font-mono">{ligne.code_pro || '—'}</td>
                     <td>
                       <Pill type={ligne.is_food ? "food" : "drink"}>
                         {ligne.is_food ? "N" : "B"}
@@ -3720,6 +3725,7 @@ const ImportModule = ({ restaurants, onRefresh }) => {
                     </td>
                     <td className="text-right font-mono">{ligne.quantite}</td>
                     <td className="text-right font-mono">{fmtPrice(ligne.prix_unitaire)}</td>
+                    <td className="text-right font-mono text-sm text-muted-foreground">{ligne.ca_ht ? fmtPrice(ligne.ca_ht) : '—'}</td>
                     <td className="text-right font-mono">{fmtPrice(ligne.ca_ttc)}</td>
                     <td className={`text-right font-mono ${isRemiseNeg ? 'text-amber-400' : ''}`}>
                       {ligne.remise !== 0 ? fmtPrice(ligne.remise) : '—'}
