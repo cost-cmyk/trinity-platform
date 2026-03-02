@@ -835,8 +835,12 @@ def parse_xls_file(file_content: bytes, filename: str) -> List[dict]:
                 # Extraire la famille si disponible
                 famille_finale = ""
                 famille_col = col_mapping.get('famille')
+                logging.info(f"DEBUG: famille_col = {famille_col}, len(row) = {len(row)}")
                 if famille_col is not None and famille_col < len(row):
                     famille_finale = str(row[famille_col]).strip()
+                    logging.info(f"DEBUG: Famille extraite = '{famille_finale}'")
+                else:
+                    logging.warning(f"DEBUG: Famille NON extraite (col={famille_col}, len={len(row)})")
                 
                 # Extraire le code produit si disponible
                 code_pro = ""
