@@ -1728,6 +1728,10 @@ def parse_budget_xlsx(file_content: bytes, filename: str, mois: str) -> List[dic
                     col_budget = idx
                 elif "réel" in cell_str or "reel" in cell_str:
                     col_reel = idx
+                # Chercher aussi les colonnes avec l'année (CA 2025, CA 2024, etc.)
+                elif "ca" in cell_str and any(str(year) in cell_str for year in range(2020, 2030)):
+                    if col_reel is None:  # Prendre la première colonne CA + année trouvée
+                        col_reel = idx
             
             logger.info(f"   📊 Colonnes: Jour={col_jour}, Date={col_date}, Budget={col_budget}, Réel={col_reel}")
             
