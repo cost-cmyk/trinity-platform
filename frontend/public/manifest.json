@@ -1,0 +1,43 @@
+{
+  "name": "Trinity - Gestion Restaurant",
+  "short_name": "Trinity",
+  "description": "Application de gestion multi-restaurants avec suivi budget, fiches techniques et analyse CA",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#1e3a8a",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "https://static.prod-images.emergentagent.com/jobs/a0b5d72e-5558-4bb7-a8e5-35eecdd72f53/images/90d7e3846f8c4d6bb8e1a90b0831c8cb5de69004fb888eaeaf7cbb1f4d45f87d.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://static.prod-images.emergentagent.com/jobs/a0b5d72e-5558-4bb7-a8e5-35eecdd72f53/images/83b3b945813dae4c01910aa505a6b3e8cdadf8a88434308cb265008b02f9d504.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity", "finance"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "url": "/?module=dashboard",
+      "description": "Voir le tableau de bord"
+    },
+    {
+      "name": "Budget vs Réel",
+      "url": "/?module=budget-vs-reel",
+      "description": "Analyse Budget vs Réel"
+    },
+    {
+      "name": "Import Données",
+      "url": "/?module=import",
+      "description": "Importer des données"
+    }
+  ]
+}
