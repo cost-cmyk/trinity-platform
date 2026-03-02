@@ -2381,6 +2381,111 @@ async def get_budget_vs_reel_groupe_mensuel(mois: str):
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.get("/dashboard/budget-vs-reel/groupe/quotidien")
+async def get_budget_vs_reel_groupe_quotidien(mois: str):
+    """
+    Dashboard Budget vs Réel - Vue Groupe Quotidienne
+    Retourne les données jour par jour pour le mois sélectionné
+    """
+    try:
+        # Parser le mois sélectionné
+        mois_dt = datetime.strptime(mois, "%Y-%m")
+        year = mois_dt.year
+        month = mois_dt.month
+        
+        # Nombre de jours dans le mois
+        if month == 12:
+            next_month = mois_dt.replace(year=year + 1, month=1)
+        else:
+            next_month = mois_dt.replace(month=month + 1)
+        
+        nb_jours_mois = (next_month - mois_dt).days
+        
+        # Récupérer tous les budgets du mois
+        budgets_data = await db.budgets.find(
+            {"mois": mois},
+            {"_id": 0}
+        ).to_list(10000)
+        
+        # Récupérer toutes les ventes du mois
+        ventes_data = await db.ventes.find(
+            {"date_vente": {"$regex": f"^{year}-{str(month).zfill(2)}"}},
+            {"_id": 0}
+        ).to_list(100000)
+        
+        # Budget total du mois
+        ca_budget_mois = sum(b.get("ca_budget", 0) for b in budgets_data)
+        ca_budget_jour_moyen = ca_budget_mois / nb_jours_mois if nb_jours_mois > 0 else 0
+        
+        # Organiser les données par jour
+        donnees_quotidiennes = []
+        cumul_ca = 0
+        cumul_ecart = 0
+        
+        for jour in range(1, nb_jours_mois + 1):
+            date_str = f"{year}-{str(month).zfill(2)}-{str(jour).zfill(2)}"
+            
+            # Budget du jour
+            budgets_jour = [b for b in budgets_data if b.get("date") == date_str]
+            ca_budget_jour = sum(b.get("ca_budget", 0) for b in budgets_jour)
+            
+            # CA Réel du jour
+            ventes_jour = [v for v in ventes_data if v.get("date_vente") == date_str]
+            ca_reel_jour = sum(v.get("ca_ht", 0) for v in ventes_jour)
+            
+            # Calculs
+            ecart_jour = ca_reel_jour - ca_budget_jour
+            cumul_ca += ca_reel_jour
+            cumul_ecart += ecart_jour
+            
+            donnees_quotidiennes.append({
+                "jour": jour,
+                "date": date_str,
+                "ca_jour": round(ca_reel_jour, 2),
+                "ecart_jour": round(ecart_jour, 2),
+                "cumul": round(cumul_ca, 2),
+                "ecart_cumul": round(cumul_ecart, 2)
+            })
+        
+        # Jour actuel (simulé comme dernier jour avec des données)
+        jour_actuel = len([d for d in donnees_quotidiennes if d["ca_jour"] > 0])
+        if jour_actuel == 0:
+            jour_actuel = 1  # Au minimum jour 1
+        
+        # KPIs
+        atteinte_pct = (cumul_ca / ca_budget_mois * 100) if ca_budget_mois > 0 else 0
+        reste = ca_budget_mois - cumul_ca
+        jours_restants = nb_jours_mois - jour_actuel
+        obj_jour_restant = reste / jours_restants if jours_restants > 0 else 0
+        
+        # Calculer si en avance ou retard
+        budget_cumul_theorique = ca_budget_jour_moyen * jour_actuel
+        en_avance = cumul_ca >= budget_cumul_theorique
+        
+        return {
+            "success": True,
+            "mois": mois,
+            "stats": {
+                "budget_mois": round(ca_budget_mois, 2),
+                "budget_jour_moyen": round(ca_budget_jour_moyen, 2),
+                "cumul_ca": round(cumul_ca, 2),
+                "cumul_ecart": round(cumul_ecart, 2),
+                "atteinte_pct": round(atteinte_pct, 2),
+                "reste": round(reste, 2),
+                "obj_jour_restant": round(obj_jour_restant, 2),
+                "jour_actuel": jour_actuel,
+                "nb_jours_mois": nb_jours_mois,
+                "en_avance": en_avance
+            },
+            "donnees_quotidiennes": donnees_quotidiennes
+        }
+        
+    except Exception as e:
+        logger.error(f"Erreur get_budget_vs_reel_groupe_quotidien: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ====================== HEALTH ======================
 
 @api_router.get("/")
