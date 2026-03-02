@@ -1095,9 +1095,12 @@ async def preview_import_file(
             "quantite": v["quantite"],
             "prix_unitaire": v["prix_unitaire"],
             "ca_ttc": v["ca_ttc"],
+            "ca_ht": v.get("ca_ht", 0),  # NOUVEAU
             "remise": v["remise"],
             "is_food": v["is_food"],
-            "is_remise_negative": v.get("remise_negative_corrigee", False),  # Remise était négative, corrigée à 0
+            "famille": v.get("famille", ""),  # NOUVEAU
+            "code_pro": v.get("code_pro", ""),  # NOUVEAU
+            "is_remise_negative": v.get("remise_negative_corrigee", False),
             "exclu": False
         })
     
