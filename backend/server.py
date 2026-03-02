@@ -2135,7 +2135,7 @@ async def get_cout_theorique(restaurant_id: str, date: Optional[str] = None):
     ventes_sans_fiche = []
     
     for vente in ventes:
-        ca = vente.get("ca_ttc", 0)
+        ca = vente.get("ca_ht", 0)
         quantite = vente.get("quantite", 1)
         is_food = vente.get("is_food", True)
         nom_produit = vente.get("produit_nom", "")
