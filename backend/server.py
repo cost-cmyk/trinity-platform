@@ -2462,9 +2462,26 @@ async def get_budget_vs_reel_groupe_quotidien(mois: str):
         budget_cumul_theorique = ca_budget_jour_moyen * jour_actuel
         en_avance = cumul_ca >= budget_cumul_theorique
         
+        # Calculer les KPIs du mois (pour affichage en haut)
+        ca_reel_mois = sum(v.get("ca_ht", 0) for v in ventes_data)
+        ecart_ca_mois = ca_reel_mois - ca_budget_mois
+        ecart_ca_pct = (ecart_ca_mois / ca_budget_mois * 100) if ca_budget_mois > 0 else 0
+        
+        # Food Cost (30% du budget pour estimation)
+        food_budget_mois = ca_budget_mois * 0.30
+        
         return {
             "success": True,
             "mois": mois,
+            "kpis": {
+                "ca_budget": round(ca_budget_mois, 2),
+                "ca_reel": round(ca_reel_mois, 2),
+                "ecart_ca": round(ecart_ca_mois, 2),
+                "ecart_ca_pct": round(ecart_ca_pct, 2),
+                "food_budget": round(food_budget_mois, 2),
+                "food_reel": 0,  # TODO: calculer avec fiches techniques
+                "ecart_food": round(-food_budget_mois, 2)
+            },
             "stats": {
                 "budget_mois": round(ca_budget_mois, 2),
                 "budget_jour_moyen": round(ca_budget_jour_moyen, 2),
