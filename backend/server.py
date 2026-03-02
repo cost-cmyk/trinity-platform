@@ -1848,7 +1848,7 @@ async def get_dashboard_stats(restaurant_id: Optional[str] = None, date: Optiona
         {"$match": ventes_query},
         {"$group": {
             "_id": None,
-            "ca_total": {"$sum": "$ca_ttc"},
+            "ca_total": {"$sum": "$ca_ht"},
             "total_couverts": {"$sum": "$quantite"},
             "nb_ventes": {"$sum": 1}
         }}
@@ -1863,7 +1863,7 @@ async def get_dashboard_stats(restaurant_id: Optional[str] = None, date: Optiona
         {"$group": {
             "_id": "$produit_nom",
             "quantite": {"$sum": "$quantite"},
-            "ca": {"$sum": "$ca_ttc"},
+            "ca": {"$sum": "$ca_ht"},
             "is_food": {"$first": "$is_food"}
         }},
         {"$sort": {"quantite": -1}},
