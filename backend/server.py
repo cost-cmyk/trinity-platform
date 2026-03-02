@@ -2049,7 +2049,7 @@ async def get_restaurant_dashboard(restaurant_id: str, date: Optional[str] = Non
         {"$match": ventes_query},
         {"$group": {
             "_id": "$is_food",
-            "ca": {"$sum": "$ca_ttc"},
+            "ca": {"$sum": "$ca_ht"},
             "quantite": {"$sum": "$quantite"},
             "remise": {"$sum": "$remise"}
         }}
