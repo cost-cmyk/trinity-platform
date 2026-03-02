@@ -1305,7 +1305,7 @@ async def upload_and_import_file(
         logging.info(f"✅ {len(result.inserted_ids)} ventes insérées en DB")
     
     # Calculer les stats
-    ca_total = sum(v["ca_ttc"] for v in ventes_docs)
+    ca_total = sum(v["ca_ht"] for v in ventes_docs)
     
     return {
         "success": True,
