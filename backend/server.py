@@ -2218,6 +2218,8 @@ async def startup_db_client():
         logger.error("Application will continue but database operations may fail")
 
 @app.on_event("shutdown")
+async def shutdown_db_client():
+    """Close MongoDB connection on shutdown"""
     logger.info("Closing MongoDB connection...")
     client.close()
     logger.info("MongoDB connection closed")
