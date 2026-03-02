@@ -2041,7 +2041,7 @@ def parse_budget_xlsx(file_content: bytes, filename: str, mois: str) -> List[dic
     budgets = []
     
     try:
-        wb = openpyxl.load_workbook(BytesIO(file_content), data_only=True)
+        wb = openpyxl.load_workbook(io.BytesIO(file_content), data_only=True)
         
         # Ignorer la feuille de synthèse, parcourir les feuilles de détails
         for sheet_name in wb.sheetnames:
