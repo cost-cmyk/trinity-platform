@@ -1915,6 +1915,10 @@ async def get_dashboard_stats(restaurant_id: Optional[str] = None, date: Optiona
     fiches_stats = await db.fiches_techniques.aggregate(fiches_pipeline).to_list(1)
     avg_food_cost = fiches_stats[0]["avg_food_cost"] if fiches_stats else 0
     
+    # Masse salariale et employés: Pour l'instant à 0 jusqu'à ce que le module soit implémenté
+    masse_salariale = 0
+    nombre_employes = 0
+    
     return {
         "restaurants_count": restaurants_count,
         "produits_count": produits_count,
@@ -1923,13 +1927,23 @@ async def get_dashboard_stats(restaurant_id: Optional[str] = None, date: Optiona
         "total_couverts": ventes_data.get("total_couverts", 0),
         "nb_ventes": ventes_data.get("nb_ventes", 0),
         "avg_food_cost": round(avg_food_cost or 0, 1),
-        "top_ventes": [{"nom": t["_id"], "quantite": t["quantite"], "ca": round(t["ca"], 2), "is_food": t.get("is_food", True)} for t in top_ventes]
+        "top_ventes": [{"nom": t["_id"], "quantite": t["quantite"], "ca": round(t["ca"], 2), "is_food": t.get("is_food", True)} for t in top_ventes],
+        "masse_salariale": masse_salariale,
+        "nombre_employes": nombre_employes
     }
 
 @api_router.get("/dashboard/restaurants-stats")
 async def get_restaurants_stats():
     """Statistiques par restaurant"""
     restaurants = await db.restaurants.find({"actif": True}, {"_id": 0}).to_list(100)
+    
+    # Récupérer la dernière date de vente globale
+    derniere_date_pipeline = [
+        {"$group": {"_id": None, "derniere_date": {"$max": "$date_vente"}}},
+        {"$limit": 1}
+    ]
+    derniere_date_result = await db.ventes.aggregate(derniere_date_pipeline).to_list(1)
+    derniere_date = derniere_date_result[0]["derniere_date"] if derniere_date_result else None
     
     stats = []
     for resto in restaurants:
@@ -1960,7 +1974,8 @@ async def get_restaurants_stats():
             "ca_total": round(ventes_data.get("ca_total", 0), 2),
             "nb_ventes": ventes_data.get("nb_ventes", 0),
             "produits_count": produits_count,
-            "fiches_count": fiches_count
+            "fiches_count": fiches_count,
+            "derniere_date": derniere_date
         })
     
     return stats

@@ -854,13 +854,33 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
     );
   }
 
+  // Calculer le mois actuel basé sur les données
+  const getCurrentMonth = () => {
+    if (restaurantStats.length > 0 && restaurantStats[0].derniere_date) {
+      return restaurantStats[0].derniere_date.substring(0, 7); // Format: YYYY-MM
+    }
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  };
+
+  const formatMonthYear = (monthStr) => {
+    // monthStr format: "2026-03" -> "Mars 2026"
+    if (!monthStr) return "...";
+    const [year, month] = monthStr.split('-');
+    const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 
+                        'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    return `${monthNames[parseInt(month) - 1]} ${year}`;
+  };
+
+  const currentMonth = getCurrentMonth();
+
   // Vue Dashboard Groupe (par défaut)
   return (
     <div className="space-y-4" data-testid="dashboard">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold mb-1">Vue Consolidée</h1>
-        <p className="text-xs text-muted-foreground">Structure & flux d'activités - Février 2026</p>
+        <p className="text-xs text-muted-foreground">Structure & flux d'activités - {formatMonthYear(currentMonth)}</p>
       </div>
 
       {/* === 1. KPIs GROUPE EN HAUT === */}
@@ -894,10 +914,10 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
             Masse Salariale
           </div>
           <div className="text-3xl font-bold" style={{ fontFamily: "'DM Mono', monospace", color: '#f472b6' }}>
-            {fmtK(stats.ca_total * 0.37)} F
+            {fmtK(stats.masse_salariale || 0)} F
           </div>
           <div className="text-xs text-muted-foreground mt-1">
-            72 employés | Fév 2026
+            {stats.nombre_employes || 0} employés | {formatMonthYear(currentMonth)}
           </div>
         </div>
       </div>
