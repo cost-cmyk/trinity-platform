@@ -1,4 +1,4 @@
-const CACHE_NAME = 'trinity-v1';
+const CACHE_NAME = 'trinity-v2-' + Date.now();
 const urlsToCache = [
   '/',
   '/static/css/main.css',

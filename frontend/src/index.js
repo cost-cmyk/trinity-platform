@@ -11,33 +11,42 @@ root.render(
 );
 
 // Enregistrement du Service Worker pour PWA
-// TEMPORAIREMENT DÉSACTIVÉ pour résoudre problème de cache
-/*
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/service-worker.js')
-      .then((registration) => {
-        console.log('✅ Service Worker enregistré:', registration.scope);
-        
-        // Vérifier les mises à jour toutes les heures
-        setInterval(() => {
-          registration.update();
-        }, 3600000);
-      })
-      .catch((error) => {
-        console.log('❌ Échec enregistrement Service Worker:', error);
-      });
-  });
-}
-*/
-
-// Désactiver le service worker existant
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(function(registrations) {
-    for(let registration of registrations) {
-      registration.unregister();
-      console.log('🗑️ Service Worker désactivé');
-    }
+    // D'abord, supprimer les anciens service workers
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+      for(let registration of registrations) {
+        registration.unregister();
+      }
+      
+      // Ensuite, enregistrer le nouveau service worker
+      navigator.serviceWorker
+        .register('/service-worker.js')
+        .then((registration) => {
+          console.log('✅ PWA Service Worker enregistré:', registration.scope);
+          
+          // Vérifier les mises à jour toutes les heures
+          setInterval(() => {
+            registration.update();
+          }, 3600000);
+          
+          // Écouter les mises à jour du service worker
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // Nouvelle version disponible, demander à l'utilisateur de recharger
+                if (confirm('Une nouvelle version de Trinity est disponible. Recharger maintenant ?')) {
+                  newWorker.postMessage({ type: 'SKIP_WAITING' });
+                  window.location.reload();
+                }
+              }
+            });
+          });
+        })
+        .catch((error) => {
+          console.log('❌ Échec enregistrement Service Worker:', error);
+        });
+    });
   });
 }
