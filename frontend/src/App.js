@@ -917,10 +917,10 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
               <span className="text-xs font-bold text-[#34d399]">$ COÛT NOURRITURE</span>
             </div>
             <div className="text-3xl font-bold mb-2" style={{ fontFamily: "'DM Mono', monospace", color: '#34d399' }}>
-              {stats.avg_food_cost ? stats.avg_food_cost.toFixed(1) : '18.1'}%
+              {stats.avg_food_cost ? stats.avg_food_cost.toFixed(1) : '0.0'}%
             </div>
             <div className="h-1.5 bg-background rounded-full overflow-hidden">
-              <div className="h-full bg-[#34d399]" style={{ width: `${stats.avg_food_cost || 18.1}%` }} />
+              <div className="h-full bg-[#34d399]" style={{ width: `${stats.avg_food_cost || 0}%` }} />
             </div>
           </div>
 
@@ -930,10 +930,10 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
               <span className="text-xs font-bold text-[#2dd4bf]">$ COÛT BOISSON</span>
             </div>
             <div className="text-3xl font-bold mb-2" style={{ fontFamily: "'DM Mono', monospace", color: '#2dd4bf' }}>
-              6.8%
+              0.0%
             </div>
             <div className="h-1.5 bg-background rounded-full overflow-hidden">
-              <div className="h-full bg-[#2dd4bf]" style={{ width: '6.8%' }} />
+              <div className="h-full bg-[#2dd4bf]" style={{ width: '0%' }} />
             </div>
           </div>
 
@@ -943,10 +943,10 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
               <span className="text-xs font-bold text-[#fbbf24]">€ COÛT MATIÈRE GLOBAL</span>
             </div>
             <div className="text-3xl font-bold mb-2" style={{ fontFamily: "'DM Mono', monospace", color: '#fbbf24' }}>
-              15.9%
+              0.0%
             </div>
             <div className="h-1.5 bg-background rounded-full overflow-hidden">
-              <div className="h-full bg-[#fbbf24]" style={{ width: '15.9%' }} />
+              <div className="h-full bg-[#fbbf24]" style={{ width: '0%' }} />
             </div>
           </div>
 
@@ -956,10 +956,10 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
               <span className="text-xs font-bold text-[#f87171]">🔥 MASSE SALARIALE / CA</span>
             </div>
             <div className="text-3xl font-bold mb-2" style={{ fontFamily: "'DM Mono', monospace", color: '#f87171' }}>
-              37.4%
+              0.0%
             </div>
             <div className="h-1.5 bg-background rounded-full overflow-hidden">
-              <div className="h-full bg-[#f87171]" style={{ width: '37.4%' }} />
+              <div className="h-full bg-[#f87171]" style={{ width: '0%' }} />
             </div>
           </div>
         </div>
@@ -967,23 +967,23 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
         {/* === 3. DÉCOMPOSITION DU CA MENSUEL === */}
         <div className="mt-6">
           <div className="text-xs text-muted-foreground uppercase tracking-wider mb-3">
-            Décomposition du CA mensuel estimé — 46.05M F
+            Décomposition du CA mensuel estimé — {fmtK(stats.ca_total)} F
           </div>
           <div className="h-8 rounded-full overflow-hidden flex">
-            <div className="flex items-center justify-center" style={{ width: '15.9%', backgroundColor: '#f97316' }}>
-              <span className="text-[10px] font-bold">Matière 15.9%</span>
+            <div className="flex items-center justify-center" style={{ width: '0%', backgroundColor: '#f97316' }}>
+              <span className="text-[10px] font-bold">Matière 0%</span>
             </div>
-            <div className="flex items-center justify-center" style={{ width: '37.4%', backgroundColor: '#f472b6' }}>
-              <span className="text-[10px] font-bold">MS 37.4%</span>
+            <div className="flex items-center justify-center" style={{ width: '0%', backgroundColor: '#f472b6' }}>
+              <span className="text-[10px] font-bold">MS 0%</span>
             </div>
             <div className="flex items-center justify-center flex-1" style={{ backgroundColor: '#34d399' }}>
-              <span className="text-[10px] font-bold">Marge 46.7%</span>
+              <span className="text-[10px] font-bold">Marge 100%</span>
             </div>
           </div>
           <div className="flex gap-4 text-xs text-muted-foreground mt-2">
-            <span className="text-[#f97316]">● Matière {fmtK(stats.ca_total * 0.159)} F</span>
-            <span className="text-[#f472b6]">● MS {fmtK(stats.ca_total * 0.374)} F</span>
-            <span className="text-[#34d399]">● Marge {fmtK(stats.ca_total * 0.467)} F</span>
+            <span className="text-[#f97316]">● Matière 0 F</span>
+            <span className="text-[#f472b6]">● MS 0 F</span>
+            <span className="text-[#34d399]">● Marge 0 F</span>
           </div>
         </div>
       </div>
