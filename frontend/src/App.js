@@ -1026,11 +1026,13 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
               </thead>
               <tbody>
                 {restaurantStats.map((r, idx) => {
-                  const foodCost = 15 + Math.random() * 15; // Simulation
-                  const bevCost = 5 + Math.random() * 10;
-                  const matiere = 10 + Math.random() * 15;
-                  const masseSal = r.ca_total * (0.2 + Math.random() * 0.6);
-                  const msCa = masseSal / r.ca_total * 100;
+                  // Utiliser les vraies données du backend au lieu de valeurs simulées
+                  const foodCost = r.food_cost_percent || 0;
+                  const bevCost = r.beverage_cost_percent || 0;
+                  const matiere = r.matiere_percent || 0;
+                  const masseSal = r.masse_salariale || 0;
+                  const msCa = r.ca_total > 0 ? (masseSal / r.ca_total * 100) : 0;
+                  const nombreSalaries = r.nombre_salaries || 0;
                   
                   return (
                     <tr 
@@ -1054,69 +1056,81 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
                       </td>
                       
                       <td className="py-3 px-2">
-                        <div className="flex flex-col items-end gap-1">
-                          <span className="text-sm font-mono font-bold text-[#34d399]">
-                            {foodCost.toFixed(1)}%
-                          </span>
-                          <div className="w-20 h-1 bg-background rounded-full overflow-hidden">
-                            <div className="h-full bg-[#34d399]" style={{ width: `${foodCost}%` }} />
+                        {r.ca_total > 0 && foodCost > 0 ? (
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="text-sm font-mono font-bold text-[#34d399]">
+                              {foodCost.toFixed(1)}%
+                            </span>
+                            <div className="w-20 h-1 bg-background rounded-full overflow-hidden">
+                              <div className="h-full bg-[#34d399]" style={{ width: `${Math.min(foodCost, 100)}%` }} />
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">0.0%</span>
+                        )}
                       </td>
                       
                       <td className="py-3 px-2">
-                        {r.ca_total > 0 ? (
+                        {r.ca_total > 0 && bevCost > 0 ? (
                           <div className="flex flex-col items-end gap-1">
                             <span className="text-sm font-mono font-bold text-[#2dd4bf]">
                               {bevCost.toFixed(1)}%
                             </span>
                             <div className="w-20 h-1 bg-background rounded-full overflow-hidden">
-                              <div className="h-full bg-[#2dd4bf]" style={{ width: `${bevCost}%` }} />
+                              <div className="h-full bg-[#2dd4bf]" style={{ width: `${Math.min(bevCost, 100)}%` }} />
                             </div>
                           </div>
                         ) : (
-                          <span className="text-muted-foreground">-</span>
+                          <span className="text-muted-foreground text-sm">0.0%</span>
                         )}
                       </td>
                       
                       <td className="py-3 px-2">
-                        <div className="flex flex-col items-end gap-1">
-                          <span className="text-sm font-mono font-bold text-[#fbbf24]">
-                            {matiere.toFixed(1)}%
-                          </span>
-                          <div className="w-20 h-1 bg-background rounded-full overflow-hidden">
-                            <div className="h-full bg-[#fbbf24]" style={{ width: `${matiere}%` }} />
+                        {r.ca_total > 0 && matiere > 0 ? (
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="text-sm font-mono font-bold text-[#fbbf24]">
+                              {matiere.toFixed(1)}%
+                            </span>
+                            <div className="w-20 h-1 bg-background rounded-full overflow-hidden">
+                              <div className="h-full bg-[#fbbf24]" style={{ width: `${Math.min(matiere, 100)}%` }} />
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">0.0%</span>
+                        )}
                       </td>
                       
                       <td className="py-3 px-2 text-right">
                         <span className="text-sm font-mono font-bold text-[#f472b6]">
-                          {fmtK(masseSal)} F
+                          {masseSal > 0 ? fmtK(masseSal) : '0'} F
                         </span>
                         <div className="text-xs text-muted-foreground mt-0.5">
-                          {Math.floor(Math.random() * 20 + 5)} sal.
+                          {nombreSalaries > 0 ? `${nombreSalaries} sal.` : '0 sal.'}
                         </div>
                       </td>
                       
                       <td className="py-3 px-2">
-                        <div className="flex flex-col items-end gap-1">
-                          <span 
-                            className="text-sm font-mono font-bold"
-                            style={{ color: msCa > 50 ? '#f87171' : msCa > 35 ? '#fbbf24' : '#34d399' }}
-                          >
-                            {msCa.toFixed(1)}%
-                          </span>
-                          <div className="w-24 h-1.5 bg-background rounded-full overflow-hidden">
-                            <div 
-                              className="h-full" 
-                              style={{ 
-                                width: `${Math.min(msCa, 100)}%`, 
-                                backgroundColor: msCa > 50 ? '#f87171' : msCa > 35 ? '#fbbf24' : '#34d399'
-                              }} 
-                            />
+                        {r.ca_total > 0 && msCa > 0 ? (
+                          <div className="flex flex-col items-end gap-1">
+                            <span 
+                              className="text-sm font-mono font-bold"
+                              style={{ color: msCa > 50 ? '#f87171' : msCa > 35 ? '#fbbf24' : '#34d399' }}
+                            >
+                              {msCa.toFixed(1)}%
+                            </span>
+                            <div className="w-24 h-1.5 bg-background rounded-full overflow-hidden">
+                              <div 
+                                className="h-full" 
+                                style={{ 
+                                  width: `${Math.min(msCa, 100)}%`, 
+                                  backgroundColor: msCa > 50 ? '#f87171' : msCa > 35 ? '#fbbf24' : '#34d399'
+                                }} 
+                              />
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">NaN%</span>
+                        )}
                       </td>
                     </tr>
                   );
