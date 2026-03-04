@@ -3758,12 +3758,15 @@ const BudgetVsReelModule = ({ restaurants }) => {
 // ====================== IMPORT VENTES ======================
 
 const ImportModule = ({ restaurants, onRefresh }) => {
-  const [activeTab, setActiveTab] = useState("ventes"); // ventes, carte, achats
+  const [activeTab, setActiveTab] = useState("ventes"); // ventes, carte, achats, budget, historique
   const [dragOver, setDragOver] = useState(false);
   const [files, setFiles] = useState([]);
   const [importing, setImporting] = useState(false);
   const [imports, setImports] = useState([]);
-  const [showHistory, setShowHistory] = useState(false);
+  
+  // États pour les filtres d'historique
+  const [historyTypeFilter, setHistoryTypeFilter] = useState("tous"); // tous, ventes, produits, achats, budget
+  const [historyDateFilter, setHistoryDateFilter] = useState(""); // YYYY-MM format
   
   // État de prévisualisation VENTES
   const [preview, setPreview] = useState(null);
@@ -4092,22 +4095,28 @@ const ImportModule = ({ restaurants, onRefresh }) => {
 
   const getRestaurantById = (id) => restaurants.find(r => r.id === id);
   
-  // Mapper les types d'imports aux onglets
-  const getImportTypeForTab = (tab) => {
-    const typeMap = {
-      "ventes": "ventes",
-      "carte": "produits",
-      "achats": "achats",
-      "budget": "budget"
-    };
-    return typeMap[tab] || "ventes";
-  };
-  
-  // Filtrer les imports selon l'onglet actif
+  // Filtrer les imports selon les filtres de l'onglet Historique
   const filteredImports = imports.filter(imp => {
-    const expectedType = getImportTypeForTab(activeTab);
-    const importType = imp.type || "ventes";
-    return importType === expectedType;
+    // Filtre par type
+    if (historyTypeFilter !== "tous") {
+      const typeMap = {
+        "ventes": "ventes",
+        "produits": "produits",
+        "achats": "achats",
+        "budget": "budget"
+      };
+      const expectedType = typeMap[historyTypeFilter];
+      const importType = imp.type || "ventes";
+      if (importType !== expectedType) return false;
+    }
+    
+    // Filtre par date (mois)
+    if (historyDateFilter) {
+      const importDate = imp.date_import ? imp.date_import.substring(0, 7) : "";
+      if (importDate !== historyDateFilter) return false;
+    }
+    
+    return true;
   });
 
   // Calculs preview
@@ -4515,6 +4524,17 @@ const ImportModule = ({ restaurants, onRefresh }) => {
           >
             <TrendingUp className="w-4 h-4 inline mr-2" />
             Budget CA
+          </button>
+          <button
+            onClick={() => setActiveTab("historique")}
+            className={`px-4 py-2 font-medium transition-colors border-b-2 ${
+              activeTab === "historique"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <FileText className="w-4 h-4 inline mr-2" />
+            Historique ({imports.length})
           </button>
         </div>
       </div>
