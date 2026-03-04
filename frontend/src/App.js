@@ -1419,7 +1419,38 @@ const CarteModule = ({ restaurants, produits, onRefresh }) => {
     is_food: true, description: "", touches_psw: ""
   });
 
-  const categories = ["Entrées", "Plats", "Desserts", "Boissons chaudes", "Boissons froides", "Alcools", "Apéritifs", "Menus"];
+  // Extraire les catégories uniques des produits (tenant compte du filtre restaurant)
+  const getUniqueCategories = () => {
+    let produitsToConsider = produits;
+    
+    // Si un restaurant est sélectionné, ne considérer que ses produits
+    if (filterRestaurant) {
+      produitsToConsider = produits.filter(p => p.restaurant_id === filterRestaurant);
+    }
+    
+    // Extraire toutes les catégories uniques
+    const uniqueCategories = [...new Set(
+      produitsToConsider
+        .map(p => p.categorie)
+        .filter(c => c && c.trim() !== '') // Filtrer les catégories vides
+    )].sort(); // Trier par ordre alphabétique
+    
+    return uniqueCategories.map(cat => ({ value: cat, label: cat }));
+  };
+
+  const categories = getUniqueCategories();
+
+  // Réinitialiser le filtre de catégorie quand on change de restaurant
+  // car les catégories disponibles peuvent changer
+  React.useEffect(() => {
+    if (filterRestaurant && filterCategorie) {
+      // Vérifier si la catégorie sélectionnée existe toujours pour ce restaurant
+      const categoriesDisponibles = categories.map(c => c.value);
+      if (!categoriesDisponibles.includes(filterCategorie)) {
+        setFilterCategorie(""); // Réinitialiser si la catégorie n'existe plus
+      }
+    }
+  }, [filterRestaurant]);
 
   const filteredProduits = produits.filter((p) => {
     if (search && !p.nom.toLowerCase().includes(search.toLowerCase())) return false;
