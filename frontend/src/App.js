@@ -1481,8 +1481,6 @@ const CarteModule = ({ restaurants, produits, onRefresh }) => {
   };
 
   const getRestaurantById = (id) => restaurants.find(r => r.id === id);
-  
-  const costs = calculateCosts();
 
   return (
     <div className="space-y-6" data-testid="carte-module">
