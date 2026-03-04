@@ -103,12 +103,155 @@
 #====================================================================================================
 
 user_problem_statement: |
-  Test 3 bug fixes in Fiche Technique form:
-  1. Bug Filtre Famille - Should load families from selected restaurant
-  2. Bug Parsing d'Unité - Should parse "/500g" to unit="g", quantiteBase=500
-  3. Bug Calcul de Coût - Should calculate proportional cost correctly
+  Application Trinity - Gestion multi-restaurants
+  
+  Session actuelle (Fork): Fixes critiques
+  1. Fix de la page "Import Données" cassée (onglet Historique manquant)
+  2. Nettoyage des imports en double dans MongoDB
+  3. Tests de tous les modules et fonctionnalités
 
 frontend:
+  - task: "Page Import Données - Onglet Historique"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "user"
+        comment: |
+          ❌ Page "Import Données" affiche un écran noir/vide quand on clique sur l'onglet "Historique".
+          L'agent précédent a ajouté le bouton de l'onglet mais n'a jamais créé le contenu JSX associé.
+      
+      - working: true
+        agent: "main"
+        comment: |
+          ✅ FIX APPLIQUÉ (2026-03-04)
+          
+          Problème identifié:
+          - L'onglet "Historique" était défini dans les boutons (ligne 4529-4538)
+          - MAIS aucun bloc JSX {activeTab === "historique" && ...} n'existait
+          - Résultat: clic sur l'onglet = écran noir
+          
+          Corrections appliquées:
+          1. Ajout du bloc JSX complet pour l'onglet "Historique" (après ligne 5080)
+          2. Implémentation des filtres:
+             - Filtre par type (Tous, Ventes PSW, Cartes & Produits, Achats Odoo, Budget CA)
+             - Filtre par mois (input type="month")
+             - Bouton "Réinitialiser les filtres"
+          3. Affichage de la liste complète des imports avec:
+             - Barre de couleur du restaurant
+             - Nom du fichier
+             - Type d'import
+             - Date complète (jour/mois/année + heure)
+             - Nombre de lignes
+             - Statut (importé, erreur, en cours)
+             - Bouton supprimer
+          4. Suppression de l'ancien système "showHistory" dans l'onglet "ventes" (redondant)
+          5. Statistiques en bas de page (nombre total d'imports affichés)
+          
+          La variable `filteredImports` définie ligne 4099-4120 est utilisée correctement.
+          Le lint JavaScript passe sans erreurs.
+          
+          Nécessite test complet avec testing subagent.
+  
+  - task: "Page Import Données - Onglet Ventes PSW"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: |
+          ✅ Simplifié et nettoyé (2026-03-04)
+          
+          Suppression de l'ancien bouton "Historique" dans l'onglet ventes car maintenant
+          nous avons un onglet "Historique" dédié qui est bien plus complet.
+          
+          Zone de drop, prévisualisation, et workflow multi-fichiers inchangés.
+
+backend:
+  - task: "Nettoyage des imports en double dans MongoDB"
+    implemented: true
+    working: true
+    file: "/app/backend/cleanup_duplicates.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "user"
+        comment: |
+          ❌ L'API /api/imports retourne des doublons (même fichier importé 2 fois).
+          Cause: double-clic sur le bouton d'import avant que la vérification backend ne soit ajoutée.
+      
+      - working: true
+        agent: "main"
+        comment: |
+          ✅ NETTOYAGE EFFECTUÉ (2026-03-04)
+          
+          Problème:
+          - 2 entrées identiques pour le fichier "MEHERIO TAHITIAN BISTRO_ventes_du_20260301_au_20260301.xls"
+          - Même ID mais dates différentes
+          
+          Solution:
+          1. Création du script `/app/backend/cleanup_duplicates.py`
+          2. Logique de nettoyage:
+             - Groupe les imports par (nom_fichier, type_import, restaurant_id)
+             - Garde l'import le plus récent (tri par date_import desc)
+             - Supprime tous les autres
+          3. Exécution réussie:
+             - 1 doublon supprimé
+             - Base de données propre (vérifié via API)
+          
+          Prévention future: Le backend vérifie déjà avant de créer de nouveaux imports
+          (ajouté dans une session précédente).
+
+metadata:
+  created_by: "main_agent_fork"
+  version: "2.0"
+  test_sequence: 1
+  run_ui: true
+
+test_plan:
+  current_focus:
+    - "Page Import Données - Onglet Historique"
+    - "Page Import Données - Onglet Ventes PSW"
+    - "Navigation entre tous les onglets (Ventes, Carte, Achats, Budget, Historique)"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: |
+      🎯 FIXES APPLIQUÉS (2026-03-04):
+      
+      1. ✅ Page "Import Données" réparée
+         - Ajout du contenu JSX manquant pour l'onglet "Historique"
+         - Implémentation complète des filtres (type + date)
+         - Suppression du code redondant dans l'onglet "ventes"
+      
+      2. ✅ Base de données nettoyée
+         - Script cleanup_duplicates.py créé et exécuté
+         - 1 doublon supprimé avec succès
+         - Vérification: plus aucun doublon dans la BDD
+      
+      TESTS REQUIS:
+      - Frontend: Navigation et utilisation de tous les onglets de "Import Données"
+      - Frontend: Filtres de l'onglet "Historique" (type + date)
+      - Frontend: Bouton "Supprimer" dans l'historique
+      - Frontend: Vérifier que la liste affiche correctement les 2 imports actuels
+      
+      FICHIERS MODIFIÉS:
+      - /app/frontend/src/App.js (lignes 4543-5080+)
+      - /app/backend/cleanup_duplicates.py (nouveau)
+
   - task: "Bug Fix 1: Restaurant Selection Triggers Famille Loading"
     implemented: true
     working: false

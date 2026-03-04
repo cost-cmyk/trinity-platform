@@ -1,0 +1,119 @@
+{
+  "summary": "Tested Import Données page fixes - Historique tab that was previously showing blank screen is now fully functional with filters, import list, and reset button working correctly.",
+  
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  
+  "test_report_links": [
+    "/app/test_reports/iteration_2.json"
+  ],
+  
+  "action_items": [],
+  
+  "critical_code_review_comments": [],
+  
+  "updated_files": [],
+  
+  "success_rate": {
+    "backend": "N/A (frontend only testing requested)",
+    "frontend": "100%"
+  },
+  
+  "seed_data_creation": "None - used existing 2 imports in database (1 budget, 1 ventes)",
+  
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  
+  "context_for_next_testing_agent": "Import Données page Historique tab is now fully functional. All 5 tabs (Ventes PSW, Carte & Produits, Achats Odoo, Budget CA, Historique) are working. Database has 2 imports: 1 Budget (248 lines) and 1 Ventes MEHERIO (100 lines) from March 2026.",
+  
+  "test_results": {
+    "tests_performed": [
+      {
+        "test": "Page Import Données - Navigation to page",
+        "result": "PASS",
+        "details": "Page loads correctly when clicking 'Import Données' in sidebar"
+      },
+      {
+        "test": "Page Import Données - All 5 tabs visible",
+        "result": "PASS",
+        "details": "Ventes PSW, Carte & Produits, Achats Odoo, Budget CA, Historique (2) tabs all visible"
+      },
+      {
+        "test": "Onglet Historique - Tab displays content (not blank)",
+        "result": "PASS",
+        "details": "Historique tab shows Filtres section, imports list, and total count. Previously was showing blank screen."
+      },
+      {
+        "test": "Onglet Historique - Import list displays correctly",
+        "result": "PASS",
+        "details": "Shows 2 imports: Import Budget.xlsx (248 lignes) and MEHERIO ventes (100 lignes), both with status 'importé'"
+      },
+      {
+        "test": "Onglet Historique - Type filter (Ventes PSW)",
+        "result": "PASS",
+        "details": "Selecting 'Ventes PSW' filters to show only 1 import (MEHERIO ventes)"
+      },
+      {
+        "test": "Onglet Historique - Type filter (Budget CA)",
+        "result": "PASS",
+        "details": "Selecting 'Budget CA' filters to show only 1 import (Import Budget.xlsx)"
+      },
+      {
+        "test": "Onglet Historique - Month filter (2026-03)",
+        "result": "PASS",
+        "details": "Setting month to 2026-03 shows both imports correctly"
+      },
+      {
+        "test": "Onglet Historique - Month filter (empty month)",
+        "result": "PASS",
+        "details": "Setting month to 2026-01 shows 0 imports (no data for that month)"
+      },
+      {
+        "test": "Onglet Historique - Reset button appears when filter active",
+        "result": "PASS",
+        "details": "'Réinitialiser les filtres' button appears when any filter is selected"
+      },
+      {
+        "test": "Onglet Historique - Reset button clears filters",
+        "result": "PASS",
+        "details": "Clicking reset button clears filters and shows all 2 imports again"
+      },
+      {
+        "test": "Onglet Historique - Reset button hides when no filter",
+        "result": "PASS",
+        "details": "Reset button disappears after filters are cleared"
+      },
+      {
+        "test": "Import list - colored bar for restaurant",
+        "result": "PASS",
+        "details": "MEHERIO import shows orange colored bar (restaurant color)"
+      },
+      {
+        "test": "Import list - Total affiché counter",
+        "result": "PASS",
+        "details": "Bottom of page shows 'Total affiché: X imports' with correct count"
+      },
+      {
+        "test": "Tab navigation - Ventes PSW",
+        "result": "PASS",
+        "details": "Tab loads with file upload drop zone"
+      },
+      {
+        "test": "Tab navigation - Carte & Produits",
+        "result": "PASS",
+        "details": "Tab loads with carte import interface"
+      }
+    ],
+    "total_tests": 15,
+    "passed": 15,
+    "failed": 0
+  }
+}

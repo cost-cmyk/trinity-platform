@@ -4542,78 +4542,7 @@ const ImportModule = ({ restaurants, onRefresh }) => {
       {/* Contenu des tabs */}
       {activeTab === "ventes" && (
         <>
-          <div className="flex items-center justify-between">
-            <p className="text-muted-foreground">Importez vos fichiers de ventes PSW (.xls, .xlsx)</p>
-            <Button 
-              variant="secondary" 
-              onClick={() => setShowHistory(!showHistory)}
-              data-testid="toggle-history-btn"
-            >
-              {showHistory ? "Nouvel import" : `Historique (${filteredImports.length})`}
-            </Button>
-          </div>
-
-      {showHistory ? (
-        <div className="space-y-4">
-          {/* Message informatif sur le filtrage */}
-          <div className="trinity-card bg-blue-500/10 border-blue-500/30">
-            <div className="flex items-center gap-2 text-sm text-blue-400">
-              <Info className="w-4 h-4" />
-              <span>
-                Historique filtré : {activeTab === "ventes" ? "Ventes PSW" : 
-                                     activeTab === "carte" ? "Cartes & Produits" :
-                                     activeTab === "achats" ? "Achats Odoo" : "Budgets CA"} uniquement
-              </span>
-            </div>
-          </div>
-
-          {filteredImports.length > 0 ? (
-            filteredImports.map((imp) => {
-              const resto = getRestaurantById(imp.restaurant_id);
-              return (
-                <div key={imp.id} className="trinity-card flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div 
-                      className="w-1 h-12 rounded-full" 
-                      style={{ backgroundColor: resto?.couleur || '#666' }}
-                    />
-                    <div>
-                      <div className="font-medium">{imp.nom_fichier}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {resto?.nom} • {new Date(imp.date_import).toLocaleDateString('fr-FR')}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <div className="font-mono text-lg">{imp.nb_lignes}</div>
-                      <div className="text-xs text-muted-foreground">
-                        lignes {imp.nb_exclues ? `(${imp.nb_exclues} exclues)` : ''}
-                      </div>
-                    </div>
-                    <Pill type={imp.statut === "importé" ? "success" : "warning"}>
-                      {imp.statut}
-                    </Pill>
-                    <button 
-                      onClick={() => deleteImport(imp.id)}
-                      className="p-2 hover:bg-destructive/20 rounded text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <EmptyState
-              icon={FileSpreadsheet}
-              title="Aucun import"
-              description="Vos imports apparaîtront ici"
-            />
-          )}
-        </div>
-      ) : (
-        <>
+          <p className="text-muted-foreground">Importez vos fichiers de ventes PSW (.xls, .xlsx)</p>
           {/* Zone de drop */}
           <div
             className={`drop-zone ${dragOver ? 'dragover' : ''} ${previewLoading ? 'animate-pulse' : ''}`}
@@ -4841,8 +4770,6 @@ const ImportModule = ({ restaurants, onRefresh }) => {
               <p className="pt-2 text-xs">💡 Astuce : Les points clés (CA, alertes) sont visibles directement</p>
             </div>
           </div>
-        </>
-      )}
         </>
       )}
 
@@ -5076,6 +5003,139 @@ const ImportModule = ({ restaurants, onRefresh }) => {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Tab HISTORIQUE */}
+      {activeTab === "historique" && (
+        <div className="space-y-4">
+          {/* Filtres */}
+          <div className="trinity-card">
+            <h3 className="text-lg font-medium mb-4">Filtres</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Type d'import</label>
+                <select
+                  value={historyTypeFilter}
+                  onChange={(e) => setHistoryTypeFilter(e.target.value)}
+                  className="w-full p-2 bg-background border border-border rounded-md"
+                >
+                  <option value="tous">Tous les types</option>
+                  <option value="ventes">Ventes PSW</option>
+                  <option value="produits">Cartes & Produits</option>
+                  <option value="achats">Achats Odoo</option>
+                  <option value="budget">Budget CA</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Mois</label>
+                <input
+                  type="month"
+                  value={historyDateFilter}
+                  onChange={(e) => setHistoryDateFilter(e.target.value)}
+                  className="w-full p-2 bg-background border border-border rounded-md"
+                  placeholder="Tous les mois"
+                />
+              </div>
+            </div>
+            
+            {(historyTypeFilter !== "tous" || historyDateFilter) && (
+              <div className="mt-4">
+                <Button 
+                  variant="secondary" 
+                  onClick={() => {
+                    setHistoryTypeFilter("tous");
+                    setHistoryDateFilter("");
+                  }}
+                  className="text-sm"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Réinitialiser les filtres
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Liste des imports */}
+          <div className="space-y-3">
+            {filteredImports.length > 0 ? (
+              filteredImports.map((imp) => {
+                const resto = getRestaurantById(imp.restaurant_id);
+                const typeLabels = {
+                  "ventes": "Ventes PSW",
+                  "produits": "Cartes & Produits",
+                  "achats": "Achats Odoo",
+                  "budget": "Budget CA"
+                };
+                const typeLabel = typeLabels[imp.type_import] || imp.type_import || "Ventes";
+                
+                return (
+                  <div key={imp.id} className="trinity-card flex items-center justify-between hover:bg-secondary/30 transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div 
+                        className="w-1 h-16 rounded-full" 
+                        style={{ backgroundColor: resto?.couleur || '#666' }}
+                      />
+                      <div>
+                        <div className="font-medium">{imp.nom_fichier}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {resto?.nom || "—"} • {typeLabel}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {new Date(imp.date_import).toLocaleDateString('fr-FR', { 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="font-mono text-lg">{imp.details?.nb_lignes || imp.nb_lignes || "—"}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {imp.details?.nb_exclues || imp.nb_exclues ? `(${imp.details?.nb_exclues || imp.nb_exclues} exclues)` : 'lignes'}
+                        </div>
+                      </div>
+                      <Pill type={imp.statut === "importé" ? "success" : imp.statut === "erreur" ? "error" : "warning"}>
+                        {imp.statut}
+                      </Pill>
+                      <button 
+                        onClick={() => deleteImport(imp.id)}
+                        className="p-2 hover:bg-destructive/20 rounded text-destructive transition-colors"
+                        title="Supprimer cet import"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <EmptyState
+                icon={FileText}
+                title="Aucun import trouvé"
+                description={
+                  historyTypeFilter !== "tous" || historyDateFilter 
+                    ? "Aucun import ne correspond à vos filtres" 
+                    : "Vos imports apparaîtront ici"
+                }
+              />
+            )}
+          </div>
+          
+          {/* Statistiques en bas */}
+          {filteredImports.length > 0 && (
+            <div className="trinity-card bg-secondary/30">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Total affiché</span>
+                <span className="font-medium">{filteredImports.length} import{filteredImports.length > 1 ? 's' : ''}</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
