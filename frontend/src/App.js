@@ -929,7 +929,7 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants, onRefreshWith
             {fmtK(stats.ca_total)} F
           </div>
           <div className="text-xs text-muted-foreground mt-1">
-            {new Date().toLocaleDateString('fr-FR')}
+            {selectedMonth ? formatMonthYear(selectedMonth) : (restaurantStats[0]?.derniere_date || new Date().toLocaleDateString('fr-FR'))}
           </div>
         </div>
 
@@ -953,7 +953,7 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants, onRefreshWith
             {fmtK(stats.masse_salariale || 0)} F
           </div>
           <div className="text-xs text-muted-foreground mt-1">
-            {stats.nombre_employes || 0} employés | {formatMonthYear(currentMonth)}
+            {stats.nombre_employes || 0} employés | {selectedMonth ? formatMonthYear(selectedMonth) : formatMonthYear(currentMonth)}
           </div>
         </div>
       </div>
