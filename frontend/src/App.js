@@ -4106,7 +4106,8 @@ const ImportModule = ({ restaurants, onRefresh }) => {
         "budget": "budget"
       };
       const expectedType = typeMap[historyTypeFilter];
-      const importType = imp.type || "ventes";
+      // Utiliser imp.type (pas imp.type_import)
+      const importType = imp.type || imp.type_import || "ventes";
       if (importType !== expectedType) return false;
     }
     
@@ -5068,7 +5069,9 @@ const ImportModule = ({ restaurants, onRefresh }) => {
                   "achats": "Achats Odoo",
                   "budget": "Budget CA"
                 };
-                const typeLabel = typeLabels[imp.type_import] || imp.type_import || "Ventes";
+                // Utiliser imp.type (pas imp.type_import)
+                const importType = imp.type || imp.type_import || "ventes";
+                const typeLabel = typeLabels[importType] || importType || "Ventes";
                 
                 return (
                   <div key={imp.id} className="trinity-card flex items-center justify-between hover:bg-secondary/30 transition-colors">
