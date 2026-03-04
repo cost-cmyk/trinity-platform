@@ -394,11 +394,12 @@ const Sidebar = ({ collapsed, setCollapsed, activeModule, setActiveModule, resta
 
 // ====================== DASHBOARD ======================
 
-const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
+const Dashboard = ({ stats, restaurantStats, loading, restaurants, onRefreshWithMonth }) => {
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [restoDashboard, setRestoDashboard] = useState(null);
   const [restoLoading, setRestoLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedMonth, setSelectedMonth] = useState(null); // Filtre de mois pour vue groupe
 
   // Charger le dashboard d'un restaurant sélectionné
   const loadRestaurantDashboard = useCallback(async (restoId, date = null) => {
@@ -877,10 +878,45 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants }) => {
   // Vue Dashboard Groupe (par défaut)
   return (
     <div className="space-y-4" data-testid="dashboard">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold mb-1">Vue Consolidée</h1>
-        <p className="text-xs text-muted-foreground">Structure & flux d'activités - {formatMonthYear(currentMonth)}</p>
+      {/* Header avec sélecteur de mois */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold mb-1">Vue Consolidée</h1>
+          <p className="text-xs text-muted-foreground">
+            Structure & flux d'activités - {selectedMonth ? formatMonthYear(selectedMonth) : formatMonthYear(currentMonth)}
+          </p>
+        </div>
+        
+        {/* Sélecteur de mois */}
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-muted-foreground">Filtrer par mois :</label>
+          <Input
+            type="month"
+            value={selectedMonth || currentMonth}
+            onChange={(v) => {
+              setSelectedMonth(v);
+              // Recharger les données avec le nouveau mois
+              if (onRefreshWithMonth) {
+                onRefreshWithMonth(v);
+              }
+            }}
+            className="w-44"
+          />
+          {selectedMonth && (
+            <button
+              onClick={() => {
+                setSelectedMonth(null);
+                if (onRefreshWithMonth) {
+                  onRefreshWithMonth(null);
+                }
+              }}
+              className="text-xs text-muted-foreground hover:text-foreground"
+              title="Réinitialiser le filtre"
+            >
+              ✕ Réinitialiser
+            </button>
+          )}
+        </div>
       </div>
 
       {/* === 1. KPIs GROUPE EN HAUT === */}
@@ -5017,16 +5053,26 @@ function App() {
     top_ventes: []
   });
   const [restaurantStats, setRestaurantStats] = useState([]);
+  const [selectedMonthFilter, setSelectedMonthFilter] = useState(null); // Filtre de mois global
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (monthFilter = null) => {
     setLoading(true);
     try {
+      // Construire les URLs avec filtre de mois si nécessaire
+      const statsUrl = monthFilter 
+        ? `${API}/dashboard/stats?month=${monthFilter}`
+        : `${API}/dashboard/stats`;
+      
+      const restoStatsUrl = monthFilter
+        ? `${API}/dashboard/restaurants-stats?month=${monthFilter}`
+        : `${API}/dashboard/restaurants-stats`;
+
       const [restosRes, produitsRes, fichesRes, statsRes, restoStatsRes] = await Promise.all([
         axios.get(`${API}/restaurants`),
         axios.get(`${API}/produits`),
         axios.get(`${API}/fiches`),
-        axios.get(`${API}/dashboard/stats`),
-        axios.get(`${API}/dashboard/restaurants-stats`)
+        axios.get(statsUrl),
+        axios.get(restoStatsUrl)
       ]);
       setRestaurants(restosRes.data);
       setProduits(produitsRes.data);
@@ -5041,6 +5087,12 @@ function App() {
     }
   }, []);
 
+  // Fonction pour recharger avec un filtre de mois
+  const handleMonthFilterChange = useCallback((month) => {
+    setSelectedMonthFilter(month);
+    fetchData(month);
+  }, [fetchData]);
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -5048,7 +5100,7 @@ function App() {
   const renderModule = () => {
     switch (activeModule) {
       case "dashboard":
-        return <Dashboard stats={stats} restaurantStats={restaurantStats} loading={loading} restaurants={restaurants} />;
+        return <Dashboard stats={stats} restaurantStats={restaurantStats} loading={loading} restaurants={restaurants} onRefreshWithMonth={handleMonthFilterChange} />;
       case "budget-vs-reel":
         return <BudgetVsReelModule restaurants={restaurants} />;
       case "restaurants":
@@ -5062,7 +5114,7 @@ function App() {
       case "import":
         return <ImportModule restaurants={restaurants} onRefresh={fetchData} />;
       default:
-        return <Dashboard stats={stats} restaurantStats={restaurantStats} loading={loading} restaurants={restaurants} />;
+        return <Dashboard stats={stats} restaurantStats={restaurantStats} loading={loading} restaurants={restaurants} onRefreshWithMonth={handleMonthFilterChange} />;
     }
   };
 

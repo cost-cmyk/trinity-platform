@@ -1878,8 +1878,14 @@ def parse_budget_xlsx(file_content: bytes, filename: str, mois: str) -> List[dic
 # ====================== DASHBOARD / STATS ======================
 
 @api_router.get("/dashboard/stats")
-async def get_dashboard_stats(restaurant_id: Optional[str] = None, date: Optional[str] = None):
-    """Statistiques pour le dashboard"""
+async def get_dashboard_stats(restaurant_id: Optional[str] = None, date: Optional[str] = None, month: Optional[str] = None):
+    """Statistiques pour le dashboard
+    
+    Args:
+        restaurant_id: ID du restaurant (optionnel)
+        date: Date spécifique YYYY-MM-DD (optionnel)
+        month: Mois spécifique YYYY-MM (optionnel, filtre par mois)
+    """
     # Compter les entités
     restaurants_count = await db.restaurants.count_documents({"actif": True})
     produits_count = await db.produits.count_documents({"actif": True})
@@ -1891,6 +1897,9 @@ async def get_dashboard_stats(restaurant_id: Optional[str] = None, date: Optiona
         ventes_query["restaurant_id"] = restaurant_id
     if date:
         ventes_query["date_vente"] = date
+    elif month:
+        # Filtre par mois (YYYY-MM)
+        ventes_query["date_vente"] = {"$regex": f"^{month}"}
     
     pipeline = [
         {"$match": ventes_query},
@@ -1948,12 +1957,21 @@ async def get_dashboard_stats(restaurant_id: Optional[str] = None, date: Optiona
     }
 
 @api_router.get("/dashboard/restaurants-stats")
-async def get_restaurants_stats():
-    """Statistiques par restaurant"""
+async def get_restaurants_stats(month: Optional[str] = None):
+    """Statistiques par restaurant
+    
+    Args:
+        month: Mois spécifique YYYY-MM (optionnel, filtre par mois)
+    """
     restaurants = await db.restaurants.find({"actif": True}, {"_id": 0}).to_list(100)
     
     # Récupérer la dernière date de vente globale
+    ventes_query = {}
+    if month:
+        ventes_query["date_vente"] = {"$regex": f"^{month}"}
+    
     derniere_date_pipeline = [
+        {"$match": ventes_query} if ventes_query else {"$match": {}},
         {"$group": {"_id": None, "derniere_date": {"$max": "$date_vente"}}},
         {"$limit": 1}
     ]
@@ -1962,9 +1980,13 @@ async def get_restaurants_stats():
     
     stats = []
     for resto in restaurants:
-        # CA pour ce restaurant
+        # CA pour ce restaurant avec filtre de mois
+        ventes_match = {"restaurant_id": resto["id"]}
+        if month:
+            ventes_match["date_vente"] = {"$regex": f"^{month}"}
+        
         pipeline = [
-            {"$match": {"restaurant_id": resto["id"]}},
+            {"$match": ventes_match},
             {"$group": {
                 "_id": None,
                 "ca_total": {"$sum": "$ca_ht"},
