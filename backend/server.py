@@ -1152,18 +1152,21 @@ async def confirm_import(data: dict):
     if not lignes_actives:
         raise HTTPException(status_code=400, detail="Aucune ligne à importer (toutes exclues)")
     
-    # Vérifier si un import identique existe déjà (dans les 5 dernières secondes)
-    recent_cutoff = datetime.now(timezone.utc) - timedelta(seconds=5)
+    # Vérifier si un import identique existe déjà (même fichier + restaurant)
+    # Pas de limite de temps - on vérifie tout l'historique
     existing_import = await db.imports.find_one({
         "type": "ventes",
         "restaurant_id": restaurant_id,
-        "nom_fichier": filename,
-        "date_import": {"$gte": recent_cutoff.isoformat()}
+        "nom_fichier": filename
     })
     
     if existing_import:
-        logger.warning(f"⚠️ Import en doublon détecté et ignoré: {filename}")
-        return {"status": "duplicate", "message": "Import déjà en cours", "import_id": existing_import["id"]}
+        logger.warning(f"⚠️ Import en doublon détecté et ignoré: {filename} (déjà importé le {existing_import.get('date_import')})")
+        return {
+            "status": "duplicate", 
+            "message": f"Ce fichier a déjà été importé le {existing_import.get('date_import', 'N/A')}", 
+            "import_id": existing_import["id"]
+        }
     
     # Créer l'import
     import_id = str(uuid.uuid4())
