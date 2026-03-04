@@ -1078,6 +1078,7 @@ async def preview_import_file(
     
     # Analyser les données
     ca_total = sum(v["ca_ht"] for v in ventes_data)
+    ca_ttc_total = sum(v["ca_ttc"] for v in ventes_data)
     total_quantite = sum(v["quantite"] for v in ventes_data)
     total_remise = sum(v["remise"] for v in ventes_data)
     
@@ -1120,8 +1121,9 @@ async def preview_import_file(
         "restaurant": restaurant_info,
         "nb_lignes": len(ventes_data),
         "ca_total": round(ca_total, 2),
+        "ca_ttc_total": round(ca_ttc_total, 2),
         "total_quantite": total_quantite,
-        "total_remise": round(total_remise, 2),
+        "total_remises": round(total_remise, 2),
         "nb_remises_negatives": nb_remises_negatives,
         "nb_food": nb_food,
         "nb_drink": nb_drink,

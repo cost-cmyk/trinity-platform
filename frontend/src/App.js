@@ -4581,7 +4581,8 @@ const ImportModule = ({ restaurants, onRefresh }) => {
                   // Calculer les stats du fichier
                   const previewStats = f.previewData ? {
                     nbLignes: f.previewData.nb_lignes || 0,
-                    ca: f.previewData.ca_total || 0,
+                    caHT: f.previewData.ca_total || 0,
+                    caTTC: f.previewData.ca_ttc_total || 0,
                     remises: f.previewData.total_remises || 0,
                     remisesNegatives: f.previewData.lignes?.filter(l => l.is_remise_negative).length || 0,
                     excludedCount: Object.values(f.excluded).filter(Boolean).length
@@ -4629,25 +4630,29 @@ const ImportModule = ({ restaurants, onRefresh }) => {
                           {/* Points clés de contrôle (si prévisualisé) */}
                           {previewStats && (
                             <div className="mt-3 p-3 bg-secondary/30 rounded-lg">
-                              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                              <div className="grid grid-cols-3 gap-x-4 gap-y-2 text-sm">
                                 <div>
                                   <span className="text-muted-foreground">Lignes :</span>{' '}
                                   <span className="font-mono font-medium">
                                     {previewStats.nbLignes}
                                     {previewStats.excludedCount > 0 && (
-                                      <span className="text-amber-400"> ({previewStats.excludedCount} exclues)</span>
+                                      <span className="text-amber-400"> ({previewStats.excludedCount} ✕)</span>
                                     )}
                                   </span>
                                 </div>
                                 <div>
                                   <span className="text-muted-foreground">CA HT :</span>{' '}
-                                  <span className="font-mono font-medium">{fmtPrice(previewStats.ca)} F</span>
+                                  <span className="font-mono font-medium">{fmtPrice(previewStats.caHT)}</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">CA TTC :</span>{' '}
+                                  <span className="font-mono font-medium">{fmtPrice(previewStats.caTTC)}</span>
                                 </div>
                                 <div>
                                   <span className="text-muted-foreground">Remises :</span>{' '}
-                                  <span className="font-mono font-medium">{fmtPrice(Math.abs(previewStats.remises))} F</span>
+                                  <span className="font-mono font-medium">{fmtPrice(Math.abs(previewStats.remises))}</span>
                                 </div>
-                                <div>
+                                <div className="col-span-2">
                                   <span className="text-muted-foreground">Alertes :</span>{' '}
                                   {previewStats.remisesNegatives > 0 ? (
                                     <span className="text-amber-400 font-medium">⚠️ {previewStats.remisesNegatives} remise(s) négative(s)</span>
