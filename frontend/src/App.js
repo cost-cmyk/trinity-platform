@@ -3833,9 +3833,12 @@ const ImportModule = ({ restaurants, onRefresh }) => {
         size: file.size,
         restaurant: detectedRestaurant,
         date: detectedDate || new Date().toISOString().split('T')[0],
-        status: "pending",
+        status: "pending",  // pending, previewing, validated, importing, success, error
         error: null,
-        result: null
+        result: null,
+        previewData: null,   // Données de prévisualisation
+        excluded: {},        // Lignes exclues {idx: true/false}
+        validated: false     // Est-ce que le fichier a été validé ?
       };
     });
 
@@ -3905,6 +3908,69 @@ const ImportModule = ({ restaurants, onRefresh }) => {
     }
   };
 
+  // Prévisualiser un fichier de la file d'attente
+  const previewQueuedFile = async (fileIndex) => {
+    const fileItem = files[fileIndex];
+    if (!fileItem || !fileItem.restaurant) {
+      toast.error("Sélectionnez un restaurant d'abord");
+      return;
+    }
+
+    // Mettre à jour le statut
+    updateFile(fileIndex, { status: "previewing" });
+
+    try {
+      const formData = new FormData();
+      formData.append('file', fileItem.file);
+      formData.append('restaurant_id', fileItem.restaurant.id);
+      formData.append('date_vente', fileItem.date);
+
+      const response = await axios.post(`${API}/imports/preview`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      // Stocker les données de prévisualisation dans le fichier
+      updateFile(fileIndex, {
+        previewData: response.data,
+        status: "previewed"
+      });
+
+      toast.success(`Prévisualisation chargée: ${response.data.nb_lignes} lignes`);
+
+    } catch (err) {
+      toast.error("Erreur prévisualisation: " + (err.response?.data?.detail || err.message));
+      updateFile(fileIndex, { 
+        status: "error",
+        error: err.response?.data?.detail || err.message
+      });
+    }
+  };
+
+  // Valider un fichier après prévisualisation
+  const validateQueuedFile = (fileIndex) => {
+    const fileItem = files[fileIndex];
+    if (!fileItem.previewData) {
+      toast.error("Prévisualisez le fichier d'abord");
+      return;
+    }
+
+    updateFile(fileIndex, {
+      validated: true,
+      status: "validated"
+    });
+
+    toast.success(`Fichier validé: ${fileItem.name}`);
+  };
+
+  // Basculer l'exclusion d'une ligne dans un fichier de la file
+  const toggleQueuedFileLineExclusion = (fileIndex, lineIdx) => {
+    const fileItem = files[fileIndex];
+    const newExcluded = { ...fileItem.excluded };
+    newExcluded[lineIdx] = !newExcluded[lineIdx];
+    
+    updateFile(fileIndex, { excluded: newExcluded });
+  };
+
   const cancelPreview = () => {
     setPreview(null);
     setPreviewFile(null);
@@ -3923,49 +3989,59 @@ const ImportModule = ({ restaurants, onRefresh }) => {
   const uploadFiles = async () => {
     setImporting(true);
 
-    // Préparer tous les uploads en batch (parallèle)
-    const uploadPromises = files.map(async (f, i) => {
-      if (f.status !== "pending") return;
-      
-      updateFile(i, { status: "processing" });
-      
-      if (!f.restaurant) {
-        updateFile(i, { status: "error", error: "Sélectionnez un restaurant" });
-        return;
-      }
+    // Ne traiter que les fichiers validés
+    const validatedFiles = files.filter(f => f.validated && f.status === "validated");
+    
+    if (validatedFiles.length === 0) {
+      toast.error("Aucun fichier validé à importer");
+      setImporting(false);
+      return;
+    }
 
+    // Importer chaque fichier validé
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      
+      if (!f.validated || f.status !== "validated") continue;
+      
+      updateFile(i, { status: "importing" });
+      
       try {
-        const formData = new FormData();
-        formData.append('file', f.file);
-        formData.append('restaurant_id', f.restaurant.id);
-        formData.append('date_vente', f.date);
+        // Préparer les lignes avec exclusions
+        const lignes = f.previewData.lignes.map(l => ({
+          ...l,
+          exclu: f.excluded[l.idx] || false,
+          annotation: ""
+        }));
 
-        const response = await axios.post(`${API}/imports/upload`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
+        const response = await axios.post(`${API}/imports/confirm`, {
+          restaurant_id: f.restaurant.id,
+          date_vente: f.date,
+          filename: f.name,
+          lignes
         });
 
         updateFile(i, { status: "success", result: response.data });
-        toast.success(`${response.data.nb_lignes} ventes importées`);
-        
+        toast.success(`✅ ${f.name}: ${response.data.nb_lignes} lignes importées`);
+
       } catch (err) {
         const errorMsg = err.response?.data?.detail || err.message;
         updateFile(i, { status: "error", error: errorMsg });
-        toast.error(`Erreur: ${errorMsg}`);
+        toast.error(`❌ ${f.name}: ${errorMsg}`);
       }
-    });
-
-    // Attendre que tous les uploads soient terminés
-    await Promise.all(uploadPromises);
+    }
 
     setImporting(false);
-    onRefresh();
     
+    // Recharger l'historique
     try {
       const res = await axios.get(`${API}/imports`);
       setImports(res.data);
-    } catch (err) {}
+      onRefresh();
+    } catch (err) {
+      console.error("Erreur rechargement imports:", err);
+    }
   };
-
   const deleteImport = async (importId) => {
     if (!window.confirm("Supprimer cet import et toutes ses ventes ?")) return;
     try {
@@ -3990,7 +4066,8 @@ const ImportModule = ({ restaurants, onRefresh }) => {
   // Lignes avec remises négatives (pour affichage détail)
   const lignesRemiseNegative = preview ? preview.lignes.filter(l => l.is_remise_negative) : [];
 
-  const pendingCount = files.filter(f => f.status === "pending").length;
+  const pendingCount = files.filter(f => f.status === "pending" || f.status === "previewed" || f.status === "validated").length;
+  const validatedCount = files.filter(f => f.validated).length;
   const successCount = files.filter(f => f.status === "success").length;
   const errorCount = files.filter(f => f.status === "error").length;
 
@@ -4485,59 +4562,178 @@ const ImportModule = ({ restaurants, onRefresh }) => {
           {/* File queue (si plusieurs fichiers) */}
           {files.length > 0 && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex gap-4 text-sm">
                   <span>{pendingCount} en attente</span>
-                  {successCount > 0 && <span className="text-emerald-400">{successCount} importés</span>}
-                  {errorCount > 0 && <span className="text-red-400">{errorCount} erreurs</span>}
+                  {validatedCount > 0 && <span className="text-blue-400">{validatedCount} validé(s)</span>}
+                  {successCount > 0 && <span className="text-emerald-400">{successCount} importé(s)</span>}
+                  {errorCount > 0 && <span className="text-red-400">{errorCount} erreur(s)</span>}
                 </div>
-                {pendingCount > 0 && (
+                {validatedCount > 0 && (
                   <Button onClick={uploadFiles} disabled={importing} data-testid="import-btn">
-                    {importing ? "Import..." : `Importer ${pendingCount} fichier(s)`}
+                    {importing ? "Import en cours..." : `Importer ${validatedCount} fichier(s) validé(s)`}
                   </Button>
                 )}
               </div>
 
-              <div className="space-y-2">
-                {files.map((f, idx) => (
-                  <div 
-                    key={idx} 
-                    className={`trinity-card flex items-center gap-4 ${f.status === 'error' ? 'border-red-500/50' : f.status === 'success' ? 'border-emerald-500/50' : ''}`}
-                  >
-                    <FileSpreadsheet className="w-8 h-8 text-muted-foreground flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">{f.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {(f.size / 1024).toFixed(1)} KB
-                        {f.result && <span className="ml-2 text-emerald-400">• {f.result.nb_lignes} ventes • {fmtPrice(f.result.ca_total)}</span>}
+              <div className="space-y-3">
+                {files.map((f, idx) => {
+                  // Calculer les stats du fichier
+                  const previewStats = f.previewData ? {
+                    nbLignes: f.previewData.nb_lignes || 0,
+                    ca: f.previewData.ca_total || 0,
+                    remises: f.previewData.total_remises || 0,
+                    remisesNegatives: f.previewData.lignes?.filter(l => l.is_remise_negative).length || 0,
+                    excludedCount: Object.values(f.excluded).filter(Boolean).length
+                  } : null;
+
+                  return (
+                    <div 
+                      key={idx} 
+                      className={`trinity-card ${
+                        f.status === 'error' ? 'border-red-500/50' : 
+                        f.status === 'success' ? 'border-emerald-500/50' : 
+                        f.status === 'validated' ? 'border-blue-500/50' : ''
+                      }`}
+                    >
+                      {/* En-tête du fichier */}
+                      <div className="flex items-start gap-3">
+                        <FileSpreadsheet className="w-6 h-6 text-muted-foreground flex-shrink-0 mt-1" />
+                        
+                        <div className="flex-1 min-w-0">
+                          {/* Nom + Taille */}
+                          <div className="font-medium truncate">{f.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {(f.size / 1024).toFixed(1)} KB
+                          </div>
+
+                          {/* Restaurant + Date */}
+                          <div className="flex gap-2 mt-2">
+                            <Select
+                              value={f.restaurant?.id || ""}
+                              onChange={(v) => updateFile(idx, { restaurant: restaurants.find(r => r.id === v) })}
+                              options={restaurants.map(r => ({ value: r.id, label: r.nom }))}
+                              placeholder="Restaurant *"
+                              className="w-48"
+                              disabled={f.status === 'importing' || f.status === 'success'}
+                            />
+                            <Input
+                              type="date"
+                              value={f.date || ""}
+                              onChange={(v) => updateFile(idx, { date: v })}
+                              className="w-36"
+                              disabled={f.status === 'importing' || f.status === 'success'}
+                            />
+                          </div>
+
+                          {/* Points clés de contrôle (si prévisualisé) */}
+                          {previewStats && (
+                            <div className="mt-3 p-3 bg-secondary/30 rounded-lg">
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                <div>
+                                  <span className="text-muted-foreground">Lignes :</span>{' '}
+                                  <span className="font-mono font-medium">
+                                    {previewStats.nbLignes}
+                                    {previewStats.excludedCount > 0 && (
+                                      <span className="text-amber-400"> ({previewStats.excludedCount} exclues)</span>
+                                    )}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">CA HT :</span>{' '}
+                                  <span className="font-mono font-medium">{fmtPrice(previewStats.ca)} F</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Remises :</span>{' '}
+                                  <span className="font-mono font-medium">{fmtPrice(Math.abs(previewStats.remises))} F</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Alertes :</span>{' '}
+                                  {previewStats.remisesNegatives > 0 ? (
+                                    <span className="text-amber-400 font-medium">⚠️ {previewStats.remisesNegatives} remise(s) négative(s)</span>
+                                  ) : (
+                                    <span className="text-emerald-400">✓ Aucune</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Message d'erreur */}
+                          {f.error && (
+                            <div className="mt-2 text-sm text-red-400">
+                              ❌ {f.error}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Actions + Statut */}
+                        <div className="flex flex-col items-end gap-2 ml-auto">
+                          {/* Statut */}
+                          <div className="flex items-center gap-2">
+                            {f.status === "pending" && (
+                              <span className="text-xs text-muted-foreground px-2 py-1 bg-secondary rounded">⏳ En attente</span>
+                            )}
+                            {f.status === "previewing" && (
+                              <span className="text-xs text-blue-400 px-2 py-1 bg-blue-500/10 rounded animate-pulse">🔍 Chargement...</span>
+                            )}
+                            {f.status === "previewed" && (
+                              <span className="text-xs text-amber-400 px-2 py-1 bg-amber-500/10 rounded">👁️ À valider</span>
+                            )}
+                            {f.status === "validated" && (
+                              <span className="text-xs text-blue-400 px-2 py-1 bg-blue-500/10 rounded">✅ Validé</span>
+                            )}
+                            {f.status === "importing" && (
+                              <span className="text-xs text-amber-400 px-2 py-1 bg-amber-500/10 rounded animate-pulse">📤 Import...</span>
+                            )}
+                            {f.status === "success" && (
+                              <span className="text-xs text-emerald-400 px-2 py-1 bg-emerald-500/10 rounded">✅ Importé</span>
+                            )}
+                            {f.status === "error" && (
+                              <span className="text-xs text-red-400 px-2 py-1 bg-red-500/10 rounded">❌ Erreur</span>
+                            )}
+                          </div>
+
+                          {/* Boutons d'action */}
+                          <div className="flex gap-1">
+                            {!f.previewData && f.status !== 'success' && f.status !== 'error' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => previewQueuedFile(idx)}
+                                disabled={!f.restaurant || f.status === 'previewing'}
+                              >
+                                {f.status === 'previewing' ? '...' : '👁️ Contrôler'}
+                              </Button>
+                            )}
+                            
+                            {f.previewData && !f.validated && f.status !== 'success' && (
+                              <Button
+                                size="sm"
+                                onClick={() => validateQueuedFile(idx)}
+                              >
+                                ✅ Valider
+                              </Button>
+                            )}
+                            
+                            {f.status !== 'importing' && f.status !== 'success' && (
+                              <button 
+                                onClick={() => removeFile(idx)} 
+                                className="p-2 hover:bg-destructive/20 rounded text-destructive"
+                                title="Retirer"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <Select
-                      value={f.restaurant?.id || ""}
-                      onChange={(v) => updateFile(idx, { restaurant: restaurants.find(r => r.id === v) })}
-                      options={restaurants.map(r => ({ value: r.id, label: r.nom }))}
-                      placeholder="Restaurant *"
-                      className="w-44"
-                    />
-                    <Input
-                      type="date"
-                      value={f.date || ""}
-                      onChange={(v) => updateFile(idx, { date: v })}
-                      className="w-40"
-                    />
-                    <div className="flex items-center gap-2 min-w-[80px]">
-                      {f.status === "pending" && <span className="text-xs text-muted-foreground">En attente</span>}
-                      {f.status === "processing" && <span className="text-xs text-amber-400 animate-pulse">Import...</span>}
-                      {f.status === "success" && <Check className="w-5 h-5 text-emerald-400" />}
-                      {f.status === "error" && <AlertCircle className="w-5 h-5 text-red-400" title={f.error} />}
-                    </div>
-                    <button onClick={() => removeFile(idx)} className="p-1 hover:bg-destructive/20 rounded text-destructive">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-              <Button variant="ghost" onClick={() => setFiles([])} className="text-muted-foreground">
+              
+              <Button variant="ghost" onClick={() => setFiles([])} className="text-muted-foreground mt-4">
                 Effacer tout
               </Button>
             </div>
@@ -4545,12 +4741,13 @@ const ImportModule = ({ restaurants, onRefresh }) => {
 
           {/* Aide */}
           <div className="trinity-card bg-secondary/30">
-            <h4 className="font-medium mb-2">Fonctionnalités de contrôle</h4>
+            <h4 className="font-medium mb-2">📋 Workflow d'import multiple</h4>
             <div className="text-sm text-muted-foreground space-y-1">
-              <p>• <strong>Prévisualisation :</strong> Visualisez toutes les lignes avant import</p>
-              <p>• <strong>Exclusion :</strong> Décochez les lignes à ne pas importer</p>
-              <p>• <strong>Annotations :</strong> Ajoutez des notes sur chaque ligne</p>
-              <p>• <strong>Remises négatives :</strong> Détectées, mises à 0 (bug PSW) - lignes conservées</p>
+              <p>1. <strong>Charger</strong> plusieurs fichiers (glisser-déposer)</p>
+              <p>2. <strong>Contrôler</strong> chaque fichier individuellement (voir les lignes, exclure si besoin)</p>
+              <p>3. <strong>Valider</strong> les fichiers contrôlés</p>
+              <p>4. <strong>Importer</strong> tous les fichiers validés en une fois</p>
+              <p className="pt-2 text-xs">💡 Astuce : Les points clés (CA, alertes) sont visibles directement</p>
             </div>
           </div>
         </>
