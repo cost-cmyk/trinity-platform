@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Store, UtensilsCrossed, UploadCloud, 
   ChevronLeft, ChevronRight, Plus, Search, Filter, X, 
   Trash2, Edit, FileSpreadsheet, ChevronDown, ChevronUp,
-  Building2, Package, FileText, TrendingUp, AlertCircle, Check
+  Building2, Package, FileText, TrendingUp, AlertCircle, Check, Info
 } from "lucide-react";
 import { Toaster, toast } from "sonner";
 
@@ -4092,6 +4092,24 @@ const ImportModule = ({ restaurants, onRefresh }) => {
 
   const getRestaurantById = (id) => restaurants.find(r => r.id === id);
   
+  // Mapper les types d'imports aux onglets
+  const getImportTypeForTab = (tab) => {
+    const typeMap = {
+      "ventes": "ventes",
+      "carte": "produits",
+      "achats": "achats",
+      "budget": "budget"
+    };
+    return typeMap[tab] || "ventes";
+  };
+  
+  // Filtrer les imports selon l'onglet actif
+  const filteredImports = imports.filter(imp => {
+    const expectedType = getImportTypeForTab(activeTab);
+    const importType = imp.type || "ventes";
+    return importType === expectedType;
+  });
+
   // Calculs preview
   const activeLignes = preview ? preview.lignes.filter(l => !excluded[l.idx]) : [];
   const activeCA = activeLignes.reduce((sum, l) => sum + l.ca_ttc, 0);
@@ -4511,14 +4529,26 @@ const ImportModule = ({ restaurants, onRefresh }) => {
               onClick={() => setShowHistory(!showHistory)}
               data-testid="toggle-history-btn"
             >
-              {showHistory ? "Nouvel import" : `Historique (${imports.length})`}
+              {showHistory ? "Nouvel import" : `Historique (${filteredImports.length})`}
             </Button>
           </div>
 
       {showHistory ? (
         <div className="space-y-4">
-          {imports.length > 0 ? (
-            imports.map((imp) => {
+          {/* Message informatif sur le filtrage */}
+          <div className="trinity-card bg-blue-500/10 border-blue-500/30">
+            <div className="flex items-center gap-2 text-sm text-blue-400">
+              <Info className="w-4 h-4" />
+              <span>
+                Historique filtré : {activeTab === "ventes" ? "Ventes PSW" : 
+                                     activeTab === "carte" ? "Cartes & Produits" :
+                                     activeTab === "achats" ? "Achats Odoo" : "Budgets CA"} uniquement
+              </span>
+            </div>
+          </div>
+
+          {filteredImports.length > 0 ? (
+            filteredImports.map((imp) => {
               const resto = getRestaurantById(imp.restaurant_id);
               return (
                 <div key={imp.id} className="trinity-card flex items-center justify-between">
