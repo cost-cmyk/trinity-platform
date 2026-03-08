@@ -2999,6 +2999,25 @@ async def startup_db_client():
         collections = await db.list_collection_names()
         logger.info(f"Connected to database '{db_name}' with {len(collections)} collections")
         
+        # Créer un index unique pour empêcher les doublons d'imports
+        try:
+            logger.info("Creating unique index on imports collection...")
+            await db.imports.create_index(
+                [
+                    ("nom_fichier", 1),
+                    ("type", 1),
+                    ("restaurant_id", 1)
+                ],
+                unique=True,
+                name="unique_import_constraint"
+            )
+            logger.info("✅ Unique index created on imports collection")
+        except Exception as idx_err:
+            if "already exists" in str(idx_err):
+                logger.info("✅ Unique index already exists")
+            else:
+                logger.warning(f"⚠️ Could not create unique index: {idx_err}")
+        
         # Exécuter la migration des restaurants
         await migrate_restaurants()
         
