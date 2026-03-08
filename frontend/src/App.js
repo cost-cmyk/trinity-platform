@@ -3799,6 +3799,8 @@ const ImportModule = ({ restaurants, onRefresh }) => {
     const loadImports = async () => {
       try {
         const res = await axios.get(`${API}/imports`);
+        console.log(`📊 Imports chargés depuis l'API: ${res.data.length}`);
+        console.log('Détails:', res.data.map(imp => ({ id: imp.id.substring(0, 8), nom: imp.nom_fichier })));
         setImports(res.data);
       } catch (err) {
         console.error("Erreur chargement imports:", err);
