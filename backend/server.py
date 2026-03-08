@@ -1390,6 +1390,93 @@ async def delete_import(import_id: str):
         "ventes_supprimees": ventes_result.deleted_count
     }
 
+@api_router.post("/imports/cleanup-duplicates")
+async def cleanup_duplicate_imports():
+    """
+    Nettoyer les imports en double dans la base de données.
+    Garde le plus récent de chaque groupe (même nom_fichier + type + restaurant_id).
+    """
+    try:
+        # Récupérer tous les imports
+        all_imports = await db.imports.find({}, {"_id": 0}).to_list(None)
+        
+        if not all_imports:
+            return {
+                "status": "success",
+                "message": "Aucun import dans la base de données",
+                "total_avant": 0,
+                "doublons_supprimes": 0,
+                "total_apres": 0
+            }
+        
+        # Grouper par clé unique (nom_fichier, type, restaurant_id)
+        groups = defaultdict(list)
+        for imp in all_imports:
+            # Gérer les deux noms de champs possibles pour le type
+            type_import = imp.get('type') or imp.get('type_import') or 'ventes'
+            key = (
+                imp.get('nom_fichier'),
+                type_import,
+                imp.get('restaurant_id')
+            )
+            groups[key].append(imp)
+        
+        # Identifier et supprimer les doublons
+        duplicates_info = []
+        total_deleted = 0
+        
+        for key, imports_group in groups.items():
+            if len(imports_group) > 1:
+                # Trier par date (du plus récent au plus ancien)
+                sorted_imports = sorted(
+                    imports_group,
+                    key=lambda x: x.get('date_import', ''),
+                    reverse=True
+                )
+                
+                # Garder le plus récent
+                to_keep = sorted_imports[0]
+                to_delete = sorted_imports[1:]
+                
+                duplicate_info = {
+                    "fichier": key[0],
+                    "type": key[1],
+                    "restaurant_id": key[2],
+                    "nb_copies": len(imports_group),
+                    "garde": to_keep['id'],
+                    "supprimes": []
+                }
+                
+                # Supprimer les autres
+                for imp in to_delete:
+                    result = await db.imports.delete_one({"id": imp['id']})
+                    if result.deleted_count > 0:
+                        total_deleted += 1
+                        duplicate_info["supprimes"].append(imp['id'])
+                        
+                        # Supprimer aussi les ventes associées si c'est un import de ventes
+                        if imp.get('type') == 'ventes':
+                            await db.ventes.delete_many({"import_id": imp['id']})
+                
+                duplicates_info.append(duplicate_info)
+        
+        # Compter les imports restants
+        remaining_imports = await db.imports.count_documents({})
+        
+        return {
+            "status": "success",
+            "message": f"Nettoyage terminé : {total_deleted} doublons supprimés",
+            "total_avant": len(all_imports),
+            "doublons_supprimes": total_deleted,
+            "total_apres": remaining_imports,
+            "details": duplicates_info
+        }
+        
+    except Exception as e:
+        logger.error(f"Erreur lors du nettoyage des doublons: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur lors du nettoyage: {str(e)}")
+
+
 
 # ====================== IMPORT CARTES ======================
 

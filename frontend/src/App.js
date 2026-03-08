@@ -5042,7 +5042,7 @@ const ImportModule = ({ restaurants, onRefresh }) => {
             </div>
             
             {(historyTypeFilter !== "tous" || historyDateFilter) && (
-              <div className="mt-4">
+              <div className="mt-4 flex gap-2">
                 <Button 
                   variant="secondary" 
                   onClick={() => {
@@ -5056,6 +5056,42 @@ const ImportModule = ({ restaurants, onRefresh }) => {
                 </Button>
               </div>
             )}
+            
+            {/* Bouton de nettoyage des doublons */}
+            <div className="mt-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h4 className="font-medium text-amber-400 mb-1">Nettoyage des doublons</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Si vous voyez des imports en double, utilisez ce bouton pour nettoyer automatiquement la base de données. 
+                    L'import le plus récent sera conservé pour chaque doublon.
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      if (!window.confirm('Voulez-vous vraiment nettoyer les imports en double ? Cette action est irréversible.')) {
+                        return;
+                      }
+                      
+                      try {
+                        const res = await axios.post(`${API}/imports/cleanup-duplicates`);
+                        toast.success(`Nettoyage terminé : ${res.data.doublons_supprimes} doublons supprimés`);
+                        
+                        // Recharger la liste des imports
+                        const importsRes = await axios.get(`${API}/imports`);
+                        setImports(importsRes.data);
+                      } catch (err) {
+                        toast.error("Erreur lors du nettoyage : " + (err.response?.data?.detail || err.message));
+                      }
+                    }}
+                    className="text-sm"
+                  >
+                    🧹 Nettoyer les doublons maintenant
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Liste des imports */}
