@@ -1427,14 +1427,18 @@ async def cleanup_duplicate_imports():
         
         for key, imports_group in groups.items():
             if len(imports_group) > 1:
-                # Trier par date (du plus récent au plus ancien)
+                # CORRECTION CRITIQUE : Trier par nombre de lignes (du plus au moins)
+                # On garde celui qui a le PLUS de données, pas le plus récent !
                 sorted_imports = sorted(
                     imports_group,
-                    key=lambda x: x.get('date_import', ''),
-                    reverse=True
+                    key=lambda x: (
+                        x.get('nb_lignes', 0) or x.get('details', {}).get('nb_lignes', 0),
+                        x.get('date_import', '')  # En cas d'égalité, prendre le plus récent
+                    ),
+                    reverse=True  # Du plus grand au plus petit
                 )
                 
-                # Garder le plus récent
+                # Garder celui avec le plus de données
                 to_keep = sorted_imports[0]
                 to_delete = sorted_imports[1:]
                 
@@ -1444,6 +1448,7 @@ async def cleanup_duplicate_imports():
                     "restaurant_id": key[2],
                     "nb_copies": len(imports_group),
                     "garde": to_keep['id'],
+                    "garde_nb_lignes": to_keep.get('nb_lignes', 0),
                     "supprimes": []
                 }
                 
