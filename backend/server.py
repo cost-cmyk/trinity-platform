@@ -1428,7 +1428,6 @@ async def cleanup_duplicate_imports():
         for key, imports_group in groups.items():
             if len(imports_group) > 1:
                 # CORRECTION CRITIQUE : Compter les VENTES RÉELLES dans la BDD
-                # pour déterminer quel import a vraiment des données
                 imports_with_counts = []
                 
                 for imp in imports_group:
@@ -1443,17 +1442,18 @@ async def cleanup_duplicate_imports():
                         'real_data_count': real_ventes_count
                     })
                 
-                # Trier par nombre de données RÉELLES (du plus au moins)
+                # Trier : 
+                # 1. Par nombre de ventes (DU PLUS AU MOINS)
+                # 2. Si égalité, par date (DU PLUS ANCIEN AU PLUS RÉCENT)
                 sorted_imports = sorted(
                     imports_with_counts,
                     key=lambda x: (
-                        x['real_data_count'],  # Priorité 1 : Nombre de données réelles
-                        x['import'].get('date_import', '')  # Priorité 2 : Plus récent en cas d'égalité
-                    ),
-                    reverse=True
+                        -x['real_data_count'],  # Négatif = du plus grand au plus petit
+                        x['import'].get('date_import', '')  # Croissant = du plus ancien au plus récent
+                    )
                 )
                 
-                # Garder celui avec le plus de données RÉELLES
+                # Le premier de la liste est celui à garder
                 to_keep = sorted_imports[0]['import']
                 to_keep_count = sorted_imports[0]['real_data_count']
                 to_delete = [item['import'] for item in sorted_imports[1:]]
@@ -1465,6 +1465,7 @@ async def cleanup_duplicate_imports():
                     "nb_copies": len(imports_group),
                     "garde": to_keep['id'],
                     "garde_nb_ventes_reelles": to_keep_count,
+                    "garde_date": to_keep.get('date_import', ''),
                     "supprimes": []
                 }
                 
