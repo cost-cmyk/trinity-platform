@@ -1427,20 +1427,36 @@ async def cleanup_duplicate_imports():
         
         for key, imports_group in groups.items():
             if len(imports_group) > 1:
-                # CORRECTION CRITIQUE : Trier par nombre de lignes (du plus au moins)
-                # On garde celui qui a le PLUS de données, pas le plus récent !
+                # CORRECTION CRITIQUE : Compter les VENTES RÉELLES dans la BDD
+                # pour déterminer quel import a vraiment des données
+                imports_with_counts = []
+                
+                for imp in imports_group:
+                    # Compter les ventes réelles associées à cet import
+                    if imp.get('type') == 'ventes':
+                        real_ventes_count = await db.ventes.count_documents({"import_id": imp['id']})
+                    else:
+                        real_ventes_count = 0
+                    
+                    imports_with_counts.append({
+                        'import': imp,
+                        'real_data_count': real_ventes_count
+                    })
+                
+                # Trier par nombre de données RÉELLES (du plus au moins)
                 sorted_imports = sorted(
-                    imports_group,
+                    imports_with_counts,
                     key=lambda x: (
-                        x.get('nb_lignes', 0) or x.get('details', {}).get('nb_lignes', 0),
-                        x.get('date_import', '')  # En cas d'égalité, prendre le plus récent
+                        x['real_data_count'],  # Priorité 1 : Nombre de données réelles
+                        x['import'].get('date_import', '')  # Priorité 2 : Plus récent en cas d'égalité
                     ),
-                    reverse=True  # Du plus grand au plus petit
+                    reverse=True
                 )
                 
-                # Garder celui avec le plus de données
-                to_keep = sorted_imports[0]
-                to_delete = sorted_imports[1:]
+                # Garder celui avec le plus de données RÉELLES
+                to_keep = sorted_imports[0]['import']
+                to_keep_count = sorted_imports[0]['real_data_count']
+                to_delete = [item['import'] for item in sorted_imports[1:]]
                 
                 duplicate_info = {
                     "fichier": key[0],
@@ -1448,7 +1464,7 @@ async def cleanup_duplicate_imports():
                     "restaurant_id": key[2],
                     "nb_copies": len(imports_group),
                     "garde": to_keep['id'],
-                    "garde_nb_lignes": to_keep.get('nb_lignes', 0),
+                    "garde_nb_ventes_reelles": to_keep_count,
                     "supprimes": []
                 }
                 
