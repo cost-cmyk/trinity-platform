@@ -1489,6 +1489,7 @@ const CarteModule = ({ restaurants, produits, onRefresh }) => {
   }, [filterRestaurant]);
 
   const [touchesPswSuggestionsCarteModule, setTouchesPswSuggestionsCarteModule] = useState([]);
+  const [touchesPswSearchCarteModule, setTouchesPswSearchCarteModule] = useState("");
 
   const filteredProduits = produits.filter((p) => {
     if (search && !p.nom.toLowerCase().includes(search.toLowerCase())) return false;
@@ -1811,39 +1812,57 @@ const CarteModule = ({ restaurants, produits, onRefresh }) => {
             onChange={(v) => setForm({ ...form, description: v })}
             placeholder="Description du produit (optionnel)"
           />
-          <Input
-            label="Touches PSW"
-            value={Array.isArray(form.touches_psw) ? form.touches_psw.join(', ') : form.touches_psw || ''}
-            onChange={(v) => {
-              const touches = v.split(',').map(t => t.trim()).filter(Boolean);
-              setForm({ ...form, touches_psw: touches });
-            }}
-            placeholder="Touches caisse (optionnel)"
-          />
           
-          {/* Bouton pour charger les suggestions PSW */}
-          {form.restaurant_id && (
-            <div className="mt-2">
-              <button
-                type="button"
-                onClick={async () => {
-                  const res = await fetch(`${API}/touches-psw-suggestions?restaurant_id=${form.restaurant_id}`);
+          {/* Touches PSW avec autocomplete */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Touches PSW</label>
+            <input
+              type="text"
+              value={touchesPswSearchCarteModule}
+              onChange={async (e) => {
+                const query = e.target.value;
+                setTouchesPswSearchCarteModule(query);
+                
+                // Si moins de 2 caractères, vider les suggestions
+                if (query.length < 2) {
+                  setTouchesPswSuggestionsCarteModule([]);
+                  return;
+                }
+                
+                // Si pas de restaurant sélectionné
+                if (!form.restaurant_id) {
+                  setTouchesPswSuggestionsCarteModule([]);
+                  return;
+                }
+                
+                // Rechercher les produits correspondants
+                try {
+                  const res = await fetch(`${API}/touches-psw-suggestions?restaurant_id=${form.restaurant_id}&search=${encodeURIComponent(query)}`);
                   const data = await res.json();
                   setTouchesPswSuggestionsCarteModule(data.suggestions || []);
-                }}
-                className="trinity-button"
-              >
-                📋 Charger les produits de ce restaurant
-              </button>
-              
+                } catch (err) {
+                  console.error('Erreur recherche touches PSW:', err);
+                  setTouchesPswSuggestionsCarteModule([]);
+                }
+              }}
+              placeholder={form.restaurant_id ? "Tapez pour rechercher (ex: HINANO...)" : "Touches caisse (optionnel)"}
+              className="trinity-input"
+              disabled={!form.restaurant_id}
+            />
+            <p className="text-xs text-muted-foreground mt-1">Tapez au moins 2 caractères pour rechercher</p>
+          </div>
+          
+          {/* Suggestions autocomplete */}
+          {form.restaurant_id && (
+            <div className="mt-2">
               {/* Suggestions */}
               {touchesPswSuggestionsCarteModule.length > 0 && (
-                <div className="mt-3 p-3 bg-secondary/30 rounded border max-h-48 overflow-y-auto">
+                <div className="mb-3 p-3 bg-secondary/30 rounded border max-h-48 overflow-y-auto">
                   <div className="text-xs text-muted-foreground mb-2">
-                    Cliquez pour ajouter :
+                    {touchesPswSuggestionsCarteModule.length} résultat(s) - Cliquez pour ajouter :
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {touchesPswSuggestionsCarteModule.slice(0, 50).map((suggestion, idx) => (
+                    {touchesPswSuggestionsCarteModule.slice(0, 30).map((suggestion, idx) => (
                       <button
                         key={idx}
                         type="button"
@@ -1851,15 +1870,25 @@ const CarteModule = ({ restaurants, produits, onRefresh }) => {
                           const currentTouches = Array.isArray(form.touches_psw) ? form.touches_psw : [];
                           if (!currentTouches.includes(suggestion)) {
                             setForm({...form, touches_psw: [...currentTouches, suggestion]});
+                            // Vider la recherche après ajout
+                            setTouchesPswSearchCarteModule('');
+                            setTouchesPswSuggestionsCarteModule([]);
                           }
                         }}
                         className="px-2 py-1 bg-primary/10 hover:bg-primary/20 text-primary rounded text-xs transition"
                         disabled={Array.isArray(form.touches_psw) && form.touches_psw.includes(suggestion)}
                       >
-                        {Array.isArray(form.touches_psw) && form.touches_psw.includes(suggestion) ? '✓ ' : ''}{suggestion}
+                        {Array.isArray(form.touches_psw) && form.touches_psw.includes(suggestion) ? '✓ ' : '+'}{suggestion}
                       </button>
                     ))}
                   </div>
+                </div>
+              )}
+              
+              {/* Message si aucun résultat */}
+              {touchesPswSearchCarteModule.length >= 2 && touchesPswSuggestionsCarteModule.length === 0 && (
+                <div className="text-xs text-amber-500 mb-3">
+                  Aucun produit trouvé avec "{touchesPswSearchCarteModule}"
                 </div>
               )}
               
@@ -2306,6 +2335,7 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
   });
   
   const [touchesPswSuggestions, setTouchesPswSuggestions] = useState([]);
+  const [touchesPswSearch, setTouchesPswSearch] = useState("");
 
   
   // États pour l'ajout d'ingrédients
@@ -3142,66 +3172,91 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
             <div className="trinity-card">
               <h3 className="font-semibold mb-2">🎯 Touches PSW</h3>
               <p className="text-xs text-muted-foreground mb-4">
-                Noms des produits dans les fichiers de ventes (cliquez pour sélectionner ou saisissez manuellement)
+                Commencez à taper pour rechercher un produit
               </p>
               
-              {/* Bouton pour charger les suggestions */}
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!form.restaurant_id) {
-                    alert("Veuillez d'abord sélectionner un restaurant");
-                    return;
-                  }
-                  const res = await fetch(`${API}/touches-psw-suggestions?restaurant_id=${form.restaurant_id}`);
-                  const data = await res.json();
-                  setTouchesPswSuggestions(data.suggestions || []);
-                }}
-                className="trinity-button mb-3"
-                disabled={!form.restaurant_id}
-              >
-                📋 Charger les produits de ce restaurant
-              </button>
+              {/* Champ de recherche autocomplete */}
+              <div className="relative">
+                <input
+                  type="text"
+                  value={touchesPswSearch}
+                  onChange={async (e) => {
+                    const query = e.target.value;
+                    setTouchesPswSearch(query);
+                    
+                    // Si moins de 2 caractères, vider les suggestions
+                    if (query.length < 2) {
+                      setTouchesPswSuggestions([]);
+                      return;
+                    }
+                    
+                    // Si pas de restaurant sélectionné
+                    if (!form.restaurant_id) {
+                      setTouchesPswSuggestions([]);
+                      return;
+                    }
+                    
+                    // Rechercher les produits correspondants
+                    try {
+                      const res = await fetch(`${API}/touches-psw-suggestions?restaurant_id=${form.restaurant_id}&search=${encodeURIComponent(query)}`);
+                      const data = await res.json();
+                      setTouchesPswSuggestions(data.suggestions || []);
+                    } catch (err) {
+                      console.error('Erreur recherche touches PSW:', err);
+                      setTouchesPswSuggestions([]);
+                    }
+                  }}
+                  placeholder={form.restaurant_id ? "Tapez pour rechercher (ex: HINANO, COCA...)" : "Sélectionnez d'abord un restaurant"}
+                  className="trinity-input"
+                  disabled={!form.restaurant_id}
+                />
+                
+                {/* Indicateur de recherche */}
+                {touchesPswSearch.length > 0 && touchesPswSearch.length < 2 && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Tapez au moins 2 caractères pour rechercher
+                  </div>
+                )}
+              </div>
               
-              {/* Suggestions */}
+              {/* Suggestions filtrées */}
               {touchesPswSuggestions.length > 0 && (
-                <div className="mb-3 p-3 bg-secondary/30 rounded border max-h-48 overflow-y-auto">
+                <div className="mt-3 p-3 bg-secondary/30 rounded border max-h-48 overflow-y-auto">
                   <div className="text-xs text-muted-foreground mb-2">
-                    Cliquez sur un produit pour l'ajouter :
+                    {touchesPswSuggestions.length} résultat(s) - Cliquez pour ajouter :
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {touchesPswSuggestions.slice(0, 50).map((suggestion, idx) => (
+                    {touchesPswSuggestions.slice(0, 30).map((suggestion, idx) => (
                       <button
                         key={idx}
                         type="button"
                         onClick={() => {
                           if (!form.touches_psw.includes(suggestion)) {
                             setForm({...form, touches_psw: [...form.touches_psw, suggestion]});
+                            // Vider la recherche après ajout
+                            setTouchesPswSearch('');
+                            setTouchesPswSuggestions([]);
                           }
                         }}
                         className="px-2 py-1 bg-primary/10 hover:bg-primary/20 text-primary rounded text-xs transition"
                         disabled={form.touches_psw.includes(suggestion)}
                       >
-                        {form.touches_psw.includes(suggestion) ? '✓ ' : ''}{suggestion}
+                        {form.touches_psw.includes(suggestion) ? '✓ ' : '+'} {suggestion}
                       </button>
                     ))}
                   </div>
                 </div>
               )}
               
-              {/* Saisie manuelle */}
-              <input
-                type="text"
-                value={form.touches_psw?.join(', ') || ''}
-                onChange={(e) => {
-                  const touches = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
-                  setForm({...form, touches_psw: touches});
-                }}
-                placeholder="Ou saisissez manuellement : Ex: CORONA 33, BIERE CORONA"
-                className="trinity-input"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Utilisé pour matcher automatiquement les ventes avec cette fiche technique
+              {/* Message si aucun résultat */}
+              {touchesPswSearch.length >= 2 && touchesPswSuggestions.length === 0 && (
+                <div className="mt-2 text-xs text-amber-500">
+                  Aucun produit trouvé. Vous pouvez l'ajouter manuellement ci-dessous.
+                </div>
+              )}
+              
+              <p className="text-xs text-muted-foreground mt-3">
+                💡 Astuce : Utilisé pour matcher automatiquement les ventes avec cette fiche
               </p>
               
               {/* Touches sélectionnées */}

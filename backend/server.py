@@ -481,14 +481,19 @@ async def get_carte_controle(restaurant_id: Optional[str] = None):
 
 
 @api_router.get("/touches-psw-suggestions")
-async def get_touches_psw_suggestions(restaurant_id: Optional[str] = None):
+async def get_touches_psw_suggestions(restaurant_id: Optional[str] = None, search: Optional[str] = None):
     """
     Retourne la liste des noms de produits uniques dans les ventes
-    pour suggérer des touches PSW
+    pour suggérer des touches PSW, avec filtrage optionnel par recherche
     """
     query = {}
     if restaurant_id:
         query["restaurant_id"] = restaurant_id
+    
+    # Si recherche fournie, filtrer par nom de produit
+    if search:
+        # Recherche insensible à la casse
+        query["produit_nom"] = {"$regex": search, "$options": "i"}
     
     # Récupérer les noms de produits uniques depuis les ventes
     pipeline = [
@@ -498,10 +503,10 @@ async def get_touches_psw_suggestions(restaurant_id: Optional[str] = None):
             "count": {"$sum": "$quantite"}
         }},
         {"$sort": {"count": -1}},
-        {"$limit": 100}
+        {"$limit": 50}  # Réduit à 50 pour les recherches filtrées
     ]
     
-    results = await db.ventes.aggregate(pipeline).to_list(100)
+    results = await db.ventes.aggregate(pipeline).to_list(50)
     suggestions = [r["_id"] for r in results if r["_id"]]
     
     return {"suggestions": suggestions}
