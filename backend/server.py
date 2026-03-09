@@ -390,6 +390,82 @@ async def link_fiche_to_produit(fiche_id: str, produit_id: str):
     await db.produits.update_one({"id": produit_id}, {"$set": {"fiche_technique_id": fiche_id}})
     return {"message": "Fiche liée au produit"}
 
+
+@api_router.get("/carte-controle")
+async def get_carte_controle(restaurant_id: Optional[str] = None):
+    """Contrôle qualité : Vérifier quels produits de la carte ont une fiche technique"""
+    produits_query = {"actif": True}
+    if restaurant_id:
+        produits_query["restaurant_id"] = restaurant_id
+    
+    produits = await db.produits.find(produits_query, {"_id": 0}).to_list(10000)
+    fiches_query = {} if not restaurant_id else {"restaurant_id": restaurant_id}
+    fiches = await db.fiches_techniques.find(fiches_query, {"_id": 0}).to_list(10000)
+    
+    produit_id_to_fiche = {}
+    produit_nom_to_fiche = {}
+    for fiche in fiches:
+        for prod_id in fiche.get("linked_produit_ids", []):
+            produit_id_to_fiche[prod_id] = fiche
+        fiche_nom = fiche.get("nom", "").upper().strip()
+        if fiche_nom:
+            produit_nom_to_fiche[fiche_nom] = fiche
+    
+    restaurants = await db.restaurants.find({"actif": True}, {"_id": 0}).to_list(100)
+    resto_map = {r["id"]: r["nom"] for r in restaurants}
+    
+    produits_detail = []
+    total_produits = 0
+    avec_ft = 0
+    
+    for produit in produits:
+        total_produits += 1
+        fiche_associee = None
+        
+        if produit["id"] in produit_id_to_fiche:
+            fiche_associee = produit_id_to_fiche[produit["id"]]
+        
+        if not fiche_associee:
+            produit_nom = produit.get("nom", "").upper().strip()
+            if produit_nom in produit_nom_to_fiche:
+                fiche_associee = produit_nom_to_fiche[produit_nom]
+            else:
+                for fiche_nom, fiche in produit_nom_to_fiche.items():
+                    if fiche_nom in produit_nom or produit_nom in fiche_nom:
+                        fiche_associee = fiche
+                        break
+        
+        has_fiche = fiche_associee is not None
+        if has_fiche:
+            avec_ft += 1
+        
+        produits_detail.append({
+            "id": produit["id"],
+            "nom": produit["nom"],
+            "restaurant_id": produit["restaurant_id"],
+            "restaurant_nom": resto_map.get(produit["restaurant_id"], "N/A"),
+            "prix_ttc": produit.get("prix_ttc", 0),
+            "categorie": produit.get("categorie", ""),
+            "has_fiche": has_fiche,
+            "fiche_nom": fiche_associee.get("nom") if fiche_associee else None,
+            "fiche_id": fiche_associee.get("id") if fiche_associee else None,
+            "touches_psw": fiche_associee.get("touches_psw", []) if fiche_associee else []
+        })
+    
+    sans_ft = total_produits - avec_ft
+    pourcentage_couvert = (avec_ft / total_produits * 100) if total_produits > 0 else 0
+    
+    return {
+        "stats": {
+            "total_produits": total_produits,
+            "avec_ft": avec_ft,
+            "sans_ft": sans_ft,
+            "pourcentage_couvert": round(pourcentage_couvert, 1)
+        },
+        "produits": produits_detail
+    }
+
+
 # ====================== VENTES ======================
 
 @api_router.get("/ventes", response_model=List[Vente])
@@ -2179,14 +2255,18 @@ async def get_restaurants_stats(month: Optional[str] = None):
     # Récupérer toutes les fiches techniques pour le matching
     fiches_all = await db.fiches_techniques.find({"statut": "fait"}, {"_id": 0}).to_list(10000)
     
-    # Créer mappings par ID et par nom
+    # Créer mappings par ID, nom et touches PSW
     produit_to_fiche = {}
     produit_nom_to_fiche = {}
+    touche_psw_to_fiche = {}
     for fiche in fiches_all:
         for produit_id in fiche.get("linked_produit_ids", []):
             produit_to_fiche[produit_id] = fiche
         fiche_nom = fiche.get("nom", "").upper().strip()
         produit_nom_to_fiche[fiche_nom] = fiche
+        for touche in fiche.get("touches_psw", []):
+            touche_clean = touche.upper().strip()
+            touche_psw_to_fiche[touche_clean] = fiche
     
     stats = []
     for resto in restaurants:
@@ -2227,6 +2307,12 @@ async def get_restaurants_stats(month: Optional[str] = None):
             produit_carte_id = vente.get("produit_carte_id")
             if produit_carte_id and produit_carte_id in produit_to_fiche:
                 fiche = produit_to_fiche[produit_carte_id]
+            
+            # Chercher par touche PSW
+            if not fiche:
+                produit_nom = vente.get("produit_nom", "").upper().strip()
+                if produit_nom in touche_psw_to_fiche:
+                    fiche = touche_psw_to_fiche[produit_nom]
             
             # Sinon chercher par nom
             if not fiche:
