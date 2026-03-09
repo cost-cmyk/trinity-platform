@@ -176,6 +176,7 @@ class FicheTechniqueBase(BaseModel):
     ingredients: List[IngredientFiche] = []
     statut: str = "brouillon"  # brouillon, fait
     linked_produit_ids: List[str] = []  # Produits de la carte rattachés
+    touches_psw: List[str] = []  # NOUVEAU: Touches PSW pour matching ventes
     photo_url: Optional[str] = None  # URL de la photo du plat
     poids_total_g: float = 0  # Poids total en grammes
 
@@ -2073,9 +2074,10 @@ async def get_dashboard_stats(restaurant_id: Optional[str] = None, date: Optiona
     # Récupérer toutes les fiches techniques avec leurs produits liés
     fiches_all = await db.fiches_techniques.find({"statut": "fait"}, {"_id": 0}).to_list(10000)
     
-    # Créer 2 mappings : par ID et par nom de produit
+    # Créer 3 mappings : par ID, par nom et par touches PSW
     produit_to_fiche = {}  # ID -> fiche
     produit_nom_to_fiche = {}  # nom -> fiche
+    touche_psw_to_fiche = {}  # touche PSW -> fiche
     
     for fiche in fiches_all:
         # Mapping par ID
@@ -2086,6 +2088,11 @@ async def get_dashboard_stats(restaurant_id: Optional[str] = None, date: Optiona
         # Nettoyer le nom : majuscules, sans espaces multiples
         fiche_nom = fiche.get("nom", "").upper().strip()
         produit_nom_to_fiche[fiche_nom] = fiche
+        
+        # Mapping par touches PSW
+        for touche in fiche.get("touches_psw", []):
+            touche_clean = touche.upper().strip()
+            touche_psw_to_fiche[touche_clean] = fiche
     
     # Récupérer toutes les ventes (avec filtre de mois si nécessaire)
     ventes_all = await db.ventes.find(ventes_query, {"_id": 0}).to_list(100000)
