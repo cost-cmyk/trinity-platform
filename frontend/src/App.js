@@ -986,10 +986,10 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants, onRefreshWith
               <span className="text-xs font-bold text-[#2dd4bf]">$ COÛT BOISSON</span>
             </div>
             <div className="text-3xl font-bold mb-2" style={{ fontFamily: "'DM Mono', monospace", color: '#2dd4bf' }}>
-              0.0%
+              {stats.avg_bev_cost ? stats.avg_bev_cost.toFixed(1) : '0.0'}%
             </div>
             <div className="h-1.5 bg-background rounded-full overflow-hidden">
-              <div className="h-full bg-[#2dd4bf]" style={{ width: '0%' }} />
+              <div className="h-full bg-[#2dd4bf]" style={{ width: `${stats.avg_bev_cost || 0}%` }} />
             </div>
           </div>
 
@@ -5203,6 +5203,7 @@ function App() {
     fiches_count: 0,
     ca_total: 0,
     avg_food_cost: 0,
+    avg_bev_cost: 0,
     top_ventes: []
   });
   const [restaurantStats, setRestaurantStats] = useState([]);

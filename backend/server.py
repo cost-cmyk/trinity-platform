@@ -2043,16 +2043,27 @@ async def get_dashboard_stats(restaurant_id: Optional[str] = None, date: Optiona
     ]
     top_ventes = await db.ventes.aggregate(top_pipeline).to_list(10)
     
-    # Food cost moyen des fiches
-    fiches_pipeline = [
-        {"$match": {"statut": "fait"}},
+    # Food cost moyen des fiches (nourriture seulement)
+    fiches_food_pipeline = [
+        {"$match": {"statut": "fait", "is_food": True}},
         {"$group": {
             "_id": None,
             "avg_food_cost": {"$avg": "$food_cost_pct"}
         }}
     ]
-    fiches_stats = await db.fiches_techniques.aggregate(fiches_pipeline).to_list(1)
-    avg_food_cost = fiches_stats[0]["avg_food_cost"] if fiches_stats else 0
+    fiches_food_stats = await db.fiches_techniques.aggregate(fiches_food_pipeline).to_list(1)
+    avg_food_cost = fiches_food_stats[0]["avg_food_cost"] if fiches_food_stats else 0
+    
+    # Bev cost moyen des fiches (boissons seulement)
+    fiches_bev_pipeline = [
+        {"$match": {"statut": "fait", "is_food": False}},
+        {"$group": {
+            "_id": None,
+            "avg_bev_cost": {"$avg": "$food_cost_pct"}
+        }}
+    ]
+    fiches_bev_stats = await db.fiches_techniques.aggregate(fiches_bev_pipeline).to_list(1)
+    avg_bev_cost = fiches_bev_stats[0]["avg_bev_cost"] if fiches_bev_stats else 0
     
     # Masse salariale et employés: Pour l'instant à 0 jusqu'à ce que le module soit implémenté
     masse_salariale = 0
@@ -2066,6 +2077,7 @@ async def get_dashboard_stats(restaurant_id: Optional[str] = None, date: Optiona
         "total_couverts": ventes_data.get("total_couverts", 0),
         "nb_ventes": ventes_data.get("nb_ventes", 0),
         "avg_food_cost": round(avg_food_cost or 0, 1),
+        "avg_bev_cost": round(avg_bev_cost or 0, 1),
         "top_ventes": [{"nom": t["_id"], "quantite": t["quantite"], "ca": round(t["ca"], 2), "is_food": t.get("is_food", True)} for t in top_ventes],
         "masse_salariale": masse_salariale,
         "nombre_employes": nombre_employes
