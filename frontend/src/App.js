@@ -2346,6 +2346,8 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
     if (!form.restaurant_id) {
       console.log("❌ Pas de restaurant sélectionné");
       setAchatsResults([]);
+  const [touchesPswSuggestions, setTouchesPswSuggestions] = useState([]);
+
       return;
     }
     
@@ -2651,13 +2653,15 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
           prix_unitaire: parseFloat(ing.prix_unitaire) || 0,
           cout_ligne: ing.cout_ligne,
           type_ingredient: ing.type_ingredient,
-          fiche_id: ing.fiche_id || null,
+
           fournisseur: ing.fournisseur || null,
           date_achat: ing.date_achat || null
         }))
       };
       if (editingId) {
         await axios.put(`${API}/fiches/${editingId}`, data);
+  const [touchesPswSuggestions, setTouchesPswSuggestions] = React.useState([]);
+
         toast.success("Fiche mise à jour");
       } else {
         await axios.post(`${API}/fiches`, data);
@@ -3063,9 +3067,54 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
             <div className="trinity-card">
               <h3 className="font-semibold mb-2">🎯 Touches PSW</h3>
               <p className="text-xs text-muted-foreground mb-4">
-                Noms des produits dans les fichiers de ventes (séparés par virgules)
+                Noms des produits dans les fichiers de ventes (cliquez pour sélectionner ou saisissez manuellement)
               </p>
               
+              {/* Bouton pour charger les suggestions */}
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!form.restaurant_id) {
+                    alert("Veuillez d'abord sélectionner un restaurant");
+                    return;
+                  }
+                  const res = await fetch(`${API}/touches-psw-suggestions?restaurant_id=${form.restaurant_id}`);
+                  const data = await res.json();
+                  setTouchesPswSuggestions(data.suggestions || []);
+                }}
+                className="trinity-button mb-3"
+                disabled={!form.restaurant_id}
+              >
+                📋 Charger les produits de ce restaurant
+              </button>
+              
+              {/* Suggestions */}
+              {touchesPswSuggestions.length > 0 && (
+                <div className="mb-3 p-3 bg-secondary/30 rounded border max-h-48 overflow-y-auto">
+                  <div className="text-xs text-muted-foreground mb-2">
+                    Cliquez sur un produit pour l'ajouter :
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {touchesPswSuggestions.slice(0, 50).map((suggestion, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          if (!form.touches_psw.includes(suggestion)) {
+                            setForm({...form, touches_psw: [...form.touches_psw, suggestion]});
+                          }
+                        }}
+                        className="px-2 py-1 bg-primary/10 hover:bg-primary/20 text-primary rounded text-xs transition"
+                        disabled={form.touches_psw.includes(suggestion)}
+                      >
+                        {form.touches_psw.includes(suggestion) ? '✓ ' : ''}{suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Saisie manuelle */}
               <input
                 type="text"
                 value={form.touches_psw?.join(', ') || ''}
@@ -3073,13 +3122,14 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                   const touches = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
                   setForm({...form, touches_psw: touches});
                 }}
-                placeholder="Ex: CORONA 33, BIERE CORONA, CORONA BTL"
+                placeholder="Ou saisissez manuellement : Ex: CORONA 33, BIERE CORONA"
                 className="trinity-input"
               />
               <p className="text-xs text-muted-foreground mt-1">
                 Utilisé pour matcher automatiquement les ventes avec cette fiche technique
               </p>
               
+              {/* Touches sélectionnées */}
               {form.touches_psw && form.touches_psw.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-3">
                   {form.touches_psw.map((touche, idx) => (

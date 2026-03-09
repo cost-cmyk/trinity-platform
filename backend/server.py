@@ -466,6 +466,34 @@ async def get_carte_controle(restaurant_id: Optional[str] = None):
     }
 
 
+
+@api_router.get("/touches-psw-suggestions")
+async def get_touches_psw_suggestions(restaurant_id: Optional[str] = None):
+    """
+    Retourne la liste des noms de produits uniques dans les ventes
+    pour suggérer des touches PSW
+    """
+    query = {}
+    if restaurant_id:
+        query["restaurant_id"] = restaurant_id
+    
+    # Récupérer les noms de produits uniques depuis les ventes
+    pipeline = [
+        {"$match": query},
+        {"$group": {
+            "_id": "$produit_nom",
+            "count": {"$sum": "$quantite"}
+        }},
+        {"$sort": {"count": -1}},
+        {"$limit": 100}
+    ]
+    
+    results = await db.ventes.aggregate(pipeline).to_list(100)
+    suggestions = [r["_id"] for r in results if r["_id"]]
+    
+    return {"suggestions": suggestions}
+
+
 # ====================== VENTES ======================
 
 @api_router.get("/ventes", response_model=List[Vente])
