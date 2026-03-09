@@ -142,7 +142,7 @@ class ProduitBase(BaseModel):
     prix_vente: float
     is_food: bool = True  # True=Nourriture, False=Boisson
     description: Optional[str] = ""
-    touches_psw: Optional[str] = ""  # Touches caisse PSW
+    touches_psw: List[str] = []  # Touches caisse PSW (liste pour matching)
     fiche_technique_id: Optional[str] = None
     actif: bool = True
 

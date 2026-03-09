@@ -1488,6 +1488,8 @@ const CarteModule = ({ restaurants, produits, onRefresh }) => {
     }
   }, [filterRestaurant]);
 
+  const [touchesPswSuggestionsCarteModule, setTouchesPswSuggestionsCarteModule] = useState([]);
+
   const filteredProduits = produits.filter((p) => {
     if (search && !p.nom.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterRestaurant && p.restaurant_id !== filterRestaurant) return false;
@@ -1496,7 +1498,7 @@ const CarteModule = ({ restaurants, produits, onRefresh }) => {
   });
 
   const resetForm = () => {
-    setForm({ nom: "", restaurant_id: "", categorie: "", prix_vente: "", is_food: true, description: "", touches_psw: "" });
+    setForm({ nom: "", restaurant_id: "", categorie: "", prix_vente: "", is_food: true, description: "", touches_psw: [] });
     setEditingId(null);
     setShowForm(false);
   };
@@ -1509,7 +1511,7 @@ const CarteModule = ({ restaurants, produits, onRefresh }) => {
       prix_vente: prod.prix_vente.toString(),
       is_food: prod.is_food,
       description: prod.description || "",
-      touches_psw: prod.touches_psw || ""
+      touches_psw: Array.isArray(prod.touches_psw) ? prod.touches_psw : (prod.touches_psw ? prod.touches_psw.split(',').map(t => t.trim()) : [])
     });
     setEditingId(prod.id);
     setShowForm(true);
@@ -1811,10 +1813,81 @@ const CarteModule = ({ restaurants, produits, onRefresh }) => {
           />
           <Input
             label="Touches PSW"
-            value={form.touches_psw}
-            onChange={(v) => setForm({ ...form, touches_psw: v })}
+            value={Array.isArray(form.touches_psw) ? form.touches_psw.join(', ') : form.touches_psw || ''}
+            onChange={(v) => {
+              const touches = v.split(',').map(t => t.trim()).filter(Boolean);
+              setForm({ ...form, touches_psw: touches });
+            }}
             placeholder="Touches caisse (optionnel)"
           />
+          
+          {/* Bouton pour charger les suggestions PSW */}
+          {form.restaurant_id && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  const res = await fetch(`${API}/touches-psw-suggestions?restaurant_id=${form.restaurant_id}`);
+                  const data = await res.json();
+                  setTouchesPswSuggestionsCarteModule(data.suggestions || []);
+                }}
+                className="trinity-button"
+              >
+                📋 Charger les produits de ce restaurant
+              </button>
+              
+              {/* Suggestions */}
+              {touchesPswSuggestionsCarteModule.length > 0 && (
+                <div className="mt-3 p-3 bg-secondary/30 rounded border max-h-48 overflow-y-auto">
+                  <div className="text-xs text-muted-foreground mb-2">
+                    Cliquez pour ajouter :
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {touchesPswSuggestionsCarteModule.slice(0, 50).map((suggestion, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          const currentTouches = Array.isArray(form.touches_psw) ? form.touches_psw : [];
+                          if (!currentTouches.includes(suggestion)) {
+                            setForm({...form, touches_psw: [...currentTouches, suggestion]});
+                          }
+                        }}
+                        className="px-2 py-1 bg-primary/10 hover:bg-primary/20 text-primary rounded text-xs transition"
+                        disabled={Array.isArray(form.touches_psw) && form.touches_psw.includes(suggestion)}
+                      >
+                        {Array.isArray(form.touches_psw) && form.touches_psw.includes(suggestion) ? '✓ ' : ''}{suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Chips sélectionnées */}
+              {Array.isArray(form.touches_psw) && form.touches_psw.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {form.touches_psw.map((touche, idx) => (
+                    <span 
+                      key={idx} 
+                      className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-sm flex items-center gap-1"
+                    >
+                      {touche}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newTouches = form.touches_psw.filter((_, i) => i !== idx);
+                          setForm({...form, touches_psw: newTouches});
+                        }}
+                        className="hover:text-red-400"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex gap-3 pt-4">
             <Button variant="secondary" onClick={resetForm} className="flex-1">
               Annuler
