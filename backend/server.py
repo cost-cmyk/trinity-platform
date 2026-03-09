@@ -2067,6 +2067,8 @@ async def get_dashboard_stats(restaurant_id: Optional[str] = None, date: Optiona
     
     # Calculer le coût de production total basé sur les ventes et fiches techniques
     cout_production_total = 0
+    cout_food_total = 0  # Coût total nourriture
+    cout_bev_total = 0   # Coût total boisson
     
     # Récupérer toutes les fiches techniques avec leurs produits liés
     fiches_all = await db.fiches_techniques.find({"statut": "fait"}, {"_id": 0}).to_list(10000)
@@ -2080,7 +2082,7 @@ async def get_dashboard_stats(restaurant_id: Optional[str] = None, date: Optiona
     # Récupérer toutes les ventes (avec filtre de mois si nécessaire)
     ventes_all = await db.ventes.find(ventes_query, {"_id": 0}).to_list(100000)
     
-    # Calculer le coût total de production
+    # Calculer le coût total de production et séparer Food/Bev
     for vente in ventes_all:
         # Chercher si le produit vendu est lié à une fiche technique
         produit_carte_id = vente.get("produit_carte_id")
@@ -2088,7 +2090,15 @@ async def get_dashboard_stats(restaurant_id: Optional[str] = None, date: Optiona
             fiche = produit_to_fiche[produit_carte_id]
             cout_unitaire = fiche.get("cout_total", 0) / max(fiche.get("nb_portions", 1), 1)
             quantite_vendue = vente.get("quantite", 0)
-            cout_production_total += cout_unitaire * quantite_vendue
+            cout_vente = cout_unitaire * quantite_vendue
+            
+            cout_production_total += cout_vente
+            
+            # Séparer par type Food/Beverage
+            if fiche.get("is_food", True):
+                cout_food_total += cout_vente
+            else:
+                cout_bev_total += cout_vente
     
     # Masse salariale et employés: Pour l'instant à 0 jusqu'à ce que le module soit implémenté
     masse_salariale = 0
@@ -2104,6 +2114,8 @@ async def get_dashboard_stats(restaurant_id: Optional[str] = None, date: Optiona
         "avg_food_cost": round(avg_food_cost or 0, 1),
         "avg_bev_cost": round(avg_bev_cost or 0, 1),
         "cout_production_total": round(cout_production_total, 2),
+        "cout_food_total": round(cout_food_total, 2),
+        "cout_bev_total": round(cout_bev_total, 2),
         "top_ventes": [{"nom": t["_id"], "quantite": t["quantite"], "ca": round(t["ca"], 2), "is_food": t.get("is_food", True)} for t in top_ventes],
         "masse_salariale": masse_salariale,
         "nombre_employes": nombre_employes

@@ -973,7 +973,7 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants, onRefreshWith
               <span className="text-xs font-bold text-[#34d399]">$ COÛT NOURRITURE</span>
             </div>
             <div className="text-3xl font-bold mb-2" style={{ fontFamily: "'DM Mono', monospace", color: '#34d399' }}>
-              {stats.avg_food_cost ? stats.avg_food_cost.toFixed(1) : '0.0'}%
+              {fmtK(stats.cout_food_total || 0)} F
             </div>
             <div className="h-1.5 bg-background rounded-full overflow-hidden">
               <div className="h-full bg-[#34d399]" style={{ width: `${stats.avg_food_cost || 0}%` }} />
@@ -986,7 +986,7 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants, onRefreshWith
               <span className="text-xs font-bold text-[#2dd4bf]">$ COÛT BOISSON</span>
             </div>
             <div className="text-3xl font-bold mb-2" style={{ fontFamily: "'DM Mono', monospace", color: '#2dd4bf' }}>
-              {stats.avg_bev_cost ? stats.avg_bev_cost.toFixed(1) : '0.0'}%
+              {fmtK(stats.cout_bev_total || 0)} F
             </div>
             <div className="h-1.5 bg-background rounded-full overflow-hidden">
               <div className="h-full bg-[#2dd4bf]" style={{ width: `${stats.avg_bev_cost || 0}%` }} />
@@ -5205,6 +5205,8 @@ function App() {
     avg_food_cost: 0,
     avg_bev_cost: 0,
     cout_production_total: 0,
+    cout_food_total: 0,
+    cout_bev_total: 0,
     top_ventes: []
   });
   const [restaurantStats, setRestaurantStats] = useState([]);
