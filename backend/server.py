@@ -1168,20 +1168,8 @@ async def confirm_import(data: dict):
             "import_id": existing_import["id"]
         }
     
-    # Créer l'import
+    # Générer l'ID de l'import (sera utilisé plus tard)
     import_id = str(uuid.uuid4())
-    import_record = {
-        "id": import_id,
-        "type": "ventes",
-        "restaurant_id": restaurant_id,
-        "nom_fichier": filename,
-        "date_import": datetime.now(timezone.utc).isoformat(),
-        "statut": "importé",
-        "nb_lignes": len(lignes_actives),
-        "nb_exclues": len(lignes) - len(lignes_actives),
-        "erreurs": []
-    }
-    await db.imports.insert_one(import_record)
     
     # Créer les ventes
     ventes_docs = []
@@ -1227,7 +1215,20 @@ async def confirm_import(data: dict):
         "statut": "importé",
         "created_at": datetime.now(timezone.utc).isoformat()
     }
-    await db.imports.insert_one(import_record)
+    
+    # Insérer l'import avec gestion des erreurs
+    try:
+        await db.imports.insert_one(import_record)
+    except Exception as e:
+        if "duplicate key error" in str(e).lower() or "E11000" in str(e):
+            logger.error(f"❌ Tentative d'import en double: {filename}")
+            raise HTTPException(
+                status_code=409, 
+                detail=f"Ce fichier a déjà été importé pour ce restaurant"
+            )
+        # Re-lever l'exception si ce n'est pas un doublon
+        logger.error(f"❌ Erreur lors de l'insertion de l'import: {e}")
+        raise
     
     return {
         "success": True,
