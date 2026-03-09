@@ -2073,21 +2073,47 @@ async def get_dashboard_stats(restaurant_id: Optional[str] = None, date: Optiona
     # Récupérer toutes les fiches techniques avec leurs produits liés
     fiches_all = await db.fiches_techniques.find({"statut": "fait"}, {"_id": 0}).to_list(10000)
     
-    # Créer un mapping produit_id -> fiche
-    produit_to_fiche = {}
+    # Créer 2 mappings : par ID et par nom de produit
+    produit_to_fiche = {}  # ID -> fiche
+    produit_nom_to_fiche = {}  # nom -> fiche
+    
     for fiche in fiches_all:
+        # Mapping par ID
         for produit_id in fiche.get("linked_produit_ids", []):
             produit_to_fiche[produit_id] = fiche
+        
+        # Mapping par nom (nom de la fiche = nom du produit généralement)
+        # Nettoyer le nom : majuscules, sans espaces multiples
+        fiche_nom = fiche.get("nom", "").upper().strip()
+        produit_nom_to_fiche[fiche_nom] = fiche
     
     # Récupérer toutes les ventes (avec filtre de mois si nécessaire)
     ventes_all = await db.ventes.find(ventes_query, {"_id": 0}).to_list(100000)
     
     # Calculer le coût total de production et séparer Food/Bev
     for vente in ventes_all:
-        # Chercher si le produit vendu est lié à une fiche technique
+        fiche = None
+        
+        # Chercher d'abord par produit_carte_id
         produit_carte_id = vente.get("produit_carte_id")
         if produit_carte_id and produit_carte_id in produit_to_fiche:
             fiche = produit_to_fiche[produit_carte_id]
+        
+        # Si pas trouvé, chercher par nom de produit
+        if not fiche:
+            produit_nom = vente.get("produit_nom", "").upper().strip()
+            # Chercher correspondance exacte ou partielle
+            if produit_nom in produit_nom_to_fiche:
+                fiche = produit_nom_to_fiche[produit_nom]
+            else:
+                # Chercher correspondance partielle (ex: "CORONA BTL 33CL" vs "Corona 33cl")
+                for fiche_nom, fiche_candidate in produit_nom_to_fiche.items():
+                    if fiche_nom in produit_nom or produit_nom in fiche_nom:
+                        fiche = fiche_candidate
+                        break
+        
+        # Si fiche trouvée, calculer le coût
+        if fiche:
             cout_unitaire = fiche.get("cout_total", 0) / max(fiche.get("nb_portions", 1), 1)
             quantite_vendue = vente.get("quantite", 0)
             cout_vente = cout_unitaire * quantite_vendue
@@ -2143,6 +2169,18 @@ async def get_restaurants_stats(month: Optional[str] = None):
     derniere_date_result = await db.ventes.aggregate(derniere_date_pipeline).to_list(1)
     derniere_date = derniere_date_result[0]["derniere_date"] if derniere_date_result else None
     
+    # Récupérer toutes les fiches techniques pour le matching
+    fiches_all = await db.fiches_techniques.find({"statut": "fait"}, {"_id": 0}).to_list(10000)
+    
+    # Créer mappings par ID et par nom
+    produit_to_fiche = {}
+    produit_nom_to_fiche = {}
+    for fiche in fiches_all:
+        for produit_id in fiche.get("linked_produit_ids", []):
+            produit_to_fiche[produit_id] = fiche
+        fiche_nom = fiche.get("nom", "").upper().strip()
+        produit_nom_to_fiche[fiche_nom] = fiche
+    
     stats = []
     for resto in restaurants:
         # CA pour ce restaurant avec filtre de mois
@@ -2167,6 +2205,53 @@ async def get_restaurants_stats(month: Optional[str] = None):
         # Nombre de fiches
         fiches_count = await db.fiches_techniques.count_documents({"restaurant_id": resto["id"]})
         
+        # Calculer coûts Food/Bev pour ce restaurant
+        ventes_resto = await db.ventes.find(ventes_match, {"_id": 0}).to_list(100000)
+        
+        cout_food_total = 0
+        cout_bev_total = 0
+        ca_food_total = 0
+        ca_bev_total = 0
+        
+        for vente in ventes_resto:
+            fiche = None
+            
+            # Chercher par produit_carte_id
+            produit_carte_id = vente.get("produit_carte_id")
+            if produit_carte_id and produit_carte_id in produit_to_fiche:
+                fiche = produit_to_fiche[produit_carte_id]
+            
+            # Sinon chercher par nom
+            if not fiche:
+                produit_nom = vente.get("produit_nom", "").upper().strip()
+                if produit_nom in produit_nom_to_fiche:
+                    fiche = produit_nom_to_fiche[produit_nom]
+                else:
+                    for fiche_nom, fiche_candidate in produit_nom_to_fiche.items():
+                        if fiche_nom in produit_nom or produit_nom in fiche_nom:
+                            fiche = fiche_candidate
+                            break
+            
+            # Si fiche trouvée, calculer le coût
+            if fiche:
+                cout_unitaire = fiche.get("cout_total", 0) / max(fiche.get("nb_portions", 1), 1)
+                quantite_vendue = vente.get("quantite", 0)
+                cout_vente = cout_unitaire * quantite_vendue
+                ca_vente = vente.get("ca_ht", 0)
+                
+                if fiche.get("is_food", True):
+                    cout_food_total += cout_vente
+                    ca_food_total += ca_vente
+                else:
+                    cout_bev_total += cout_vente
+                    ca_bev_total += ca_vente
+        
+        # Calculer les pourcentages
+        food_cost_pct = (cout_food_total / ca_food_total * 100) if ca_food_total > 0 else 0
+        bev_cost_pct = (cout_bev_total / ca_bev_total * 100) if ca_bev_total > 0 else 0
+        cout_matiere_total = cout_food_total + cout_bev_total
+        matiere_cost_pct = (cout_matiere_total / ventes_data.get("ca_total", 0) * 100) if ventes_data.get("ca_total", 0) > 0 else 0
+        
         stats.append({
             "id": resto["id"],
             "nom": resto["nom"],
@@ -2177,7 +2262,13 @@ async def get_restaurants_stats(month: Optional[str] = None):
             "nb_ventes": ventes_data.get("nb_ventes", 0),
             "produits_count": produits_count,
             "fiches_count": fiches_count,
-            "derniere_date": derniere_date
+            "derniere_date": derniere_date,
+            "food_cost_pct": round(food_cost_pct, 1),
+            "bev_cost_pct": round(bev_cost_pct, 1),
+            "matiere_cost_pct": round(matiere_cost_pct, 1),
+            "cout_food_total": round(cout_food_total, 2),
+            "cout_bev_total": round(cout_bev_total, 2),
+            "cout_matiere_total": round(cout_matiere_total, 2)
         })
     
     return stats

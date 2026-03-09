@@ -1083,9 +1083,9 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants, onRefreshWith
               <tbody>
                 {restaurantStats.map((r, idx) => {
                   // Utiliser les vraies données du backend au lieu de valeurs simulées
-                  const foodCost = r.food_cost_percent || 0;
-                  const bevCost = r.beverage_cost_percent || 0;
-                  const matiere = r.matiere_percent || 0;
+                  const foodCost = r.food_cost_pct || 0;
+                  const bevCost = r.bev_cost_pct || 0;
+                  const matiere = r.matiere_cost_pct || 0;
                   const masseSal = r.masse_salariale || 0;
                   const msCa = r.ca_total > 0 ? (masseSal / r.ca_total * 100) : 0;
                   const nombreSalaries = r.nombre_salaries || 0;
