@@ -1549,6 +1549,16 @@ const CarteModule = ({ restaurants, produits, onRefresh }) => {
 
   const getRestaurantById = (id) => restaurants.find(r => r.id === id);
 
+
+  // Charger les données de contrôle
+  const [controleData, setControleData] = React.useState({stats: {}, produits: []});
+  React.useEffect(() => {
+    fetch(`${API}/carte-controle${filterRestaurant ? `?restaurant_id=${filterRestaurant}` : ''}`)
+      .then(r => r.json())
+      .then(data => setControleData(data))
+      .catch(err => console.error('Erreur chargement contrôle:', err));
+  }, [filterRestaurant, produits]);
+
   return (
     <div className="space-y-6" data-testid="carte-module">
       <div className="flex items-center justify-between">
@@ -1559,6 +1569,45 @@ const CarteModule = ({ restaurants, produits, onRefresh }) => {
         <Button icon={Plus} onClick={() => setShowForm(true)} data-testid="add-produit-btn">
           Nouveau Produit
         </Button>
+      </div>
+
+      {/* KPIs Contrôle Fiches Techniques */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="trinity-card" style={{borderLeft: '3px solid #f97316'}}>
+          <div className="text-sm text-muted-foreground uppercase tracking-wider mb-1">
+            PRODUITS CARTE
+          </div>
+          <div className="text-4xl font-bold text-orange-500 mb-2">
+            {controleData.stats?.total_produits || 0}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {filterRestaurant ? 'Restaurant sélectionné' : 'Tous restaurants'}
+          </div>
+        </div>
+
+        <div className="trinity-card" style={{borderLeft: '3px solid #10b981'}}>
+          <div className="text-sm text-muted-foreground uppercase tracking-wider mb-1">
+            AVEC FICHE TECHNIQUE
+          </div>
+          <div className="text-4xl font-bold text-green-500 mb-2">
+            {controleData.stats?.avec_ft || 0}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {controleData.stats?.pourcentage_couvert?.toFixed(1) || '0.0'}% couvert
+          </div>
+        </div>
+
+        <div className="trinity-card" style={{borderLeft: '3px solid #ef4444'}}>
+          <div className="text-sm text-muted-foreground uppercase tracking-wider mb-1">
+            SANS FICHE TECHNIQUE
+          </div>
+          <div className="text-4xl font-bold text-red-500 mb-2">
+            {controleData.stats?.sans_ft || 0}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            À rattacher
+          </div>
+        </div>
       </div>
 
       {/* Filters */}
@@ -1601,12 +1650,15 @@ const CarteModule = ({ restaurants, produits, onRefresh }) => {
                 <th>Catégorie</th>
                 <th>Type</th>
                 <th className="text-right">Prix TTC</th>
+                <th>Fiche Technique</th>
+                <th>Touches PSW</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {filteredProduits.map((prod) => {
                 const resto = getRestaurantById(prod.restaurant_id);
+                const produitDetail = controleData.produits?.find(p => p.id === prod.id);
                 return (
                   <tr key={prod.id}>
                     <td>
@@ -1628,6 +1680,37 @@ const CarteModule = ({ restaurants, produits, onRefresh }) => {
                       </Pill>
                     </td>
                     <td className="text-right font-mono">{fmtPrice(prod.prix_vente)}</td>
+                    <td>
+                      {produitDetail?.has_fiche ? (
+                        <div className="flex items-center gap-1 text-green-500">
+                          <Check className="w-4 h-4" />
+                          <span className="text-sm">Rattachée</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-red-500">
+                          <X className="w-4 h-4" />
+                          <span className="text-sm">Non rattachée</span>
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      {produitDetail?.touches_psw?.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {produitDetail.touches_psw.slice(0, 2).map((t, i) => (
+                            <span key={i} className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded text-xs">
+                              {t}
+                            </span>
+                          ))}
+                          {produitDetail.touches_psw.length > 2 && (
+                            <span className="text-xs text-muted-foreground">
+                              +{produitDetail.touches_psw.length - 2}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </td>
                     <td>
                       <div className="flex gap-1 justify-end">
                         <button 
@@ -2366,6 +2449,7 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
       statut: "brouillon", 
       ingredients: [],
       linked_produit_ids: [],
+      touches_psw: [],
       photo_url: null
     });
     setNewIngredient({ 
@@ -2948,6 +3032,50 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                 />
                 
                 {produitsResults.length > 0 && (
+
+
+            {/* Touches PSW */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                🎯 Touches PSW (noms des produits dans les ventes)
+              </label>
+              <input
+                type="text"
+                value={form.touches_psw?.join(', ') || ''}
+                onChange={(e) => {
+                  const touches = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
+                  setForm({...form, touches_psw: touches});
+                }}
+                placeholder="Ex: CORONA 33, BIERE CORONA, CORONA BTL"
+                className="w-full p-2 rounded border bg-background text-foreground"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Séparez les touches par des virgules. Utilisé pour matcher automatiquement les ventes avec cette fiche.
+              </p>
+              {form.touches_psw && form.touches_psw.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {form.touches_psw.map((touche, idx) => (
+                    <span 
+                      key={idx} 
+                      className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-sm flex items-center gap-1"
+                    >
+                      {touche}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newTouches = form.touches_psw.filter((_, i) => i !== idx);
+                          setForm({...form, touches_psw: newTouches});
+                        }}
+                        className="hover:text-red-400"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
                   <div className="absolute z-10 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
                     {produitsResults.map(prod => (
                       <button
