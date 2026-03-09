@@ -2065,6 +2065,31 @@ async def get_dashboard_stats(restaurant_id: Optional[str] = None, date: Optiona
     fiches_bev_stats = await db.fiches_techniques.aggregate(fiches_bev_pipeline).to_list(1)
     avg_bev_cost = fiches_bev_stats[0]["avg_bev_cost"] if fiches_bev_stats else 0
     
+    # Calculer le coût de production total basé sur les ventes et fiches techniques
+    cout_production_total = 0
+    
+    # Récupérer toutes les fiches techniques avec leurs produits liés
+    fiches_all = await db.fiches_techniques.find({"statut": "fait"}, {"_id": 0}).to_list(10000)
+    
+    # Créer un mapping produit_id -> fiche
+    produit_to_fiche = {}
+    for fiche in fiches_all:
+        for produit_id in fiche.get("linked_produit_ids", []):
+            produit_to_fiche[produit_id] = fiche
+    
+    # Récupérer toutes les ventes (avec filtre de mois si nécessaire)
+    ventes_all = await db.ventes.find(ventes_query, {"_id": 0}).to_list(100000)
+    
+    # Calculer le coût total de production
+    for vente in ventes_all:
+        # Chercher si le produit vendu est lié à une fiche technique
+        produit_carte_id = vente.get("produit_carte_id")
+        if produit_carte_id and produit_carte_id in produit_to_fiche:
+            fiche = produit_to_fiche[produit_carte_id]
+            cout_unitaire = fiche.get("cout_total", 0) / max(fiche.get("nb_portions", 1), 1)
+            quantite_vendue = vente.get("quantite", 0)
+            cout_production_total += cout_unitaire * quantite_vendue
+    
     # Masse salariale et employés: Pour l'instant à 0 jusqu'à ce que le module soit implémenté
     masse_salariale = 0
     nombre_employes = 0
@@ -2078,6 +2103,7 @@ async def get_dashboard_stats(restaurant_id: Optional[str] = None, date: Optiona
         "nb_ventes": ventes_data.get("nb_ventes", 0),
         "avg_food_cost": round(avg_food_cost or 0, 1),
         "avg_bev_cost": round(avg_bev_cost or 0, 1),
+        "cout_production_total": round(cout_production_total, 2),
         "top_ventes": [{"nom": t["_id"], "quantite": t["quantite"], "ca": round(t["ca"], 2), "is_food": t.get("is_food", True)} for t in top_ventes],
         "masse_salariale": masse_salariale,
         "nombre_employes": nombre_employes

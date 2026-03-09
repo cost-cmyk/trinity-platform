@@ -938,7 +938,7 @@ const Dashboard = ({ stats, restaurantStats, loading, restaurants, onRefreshWith
             Coût Production Total
           </div>
           <div className="text-3xl font-bold" style={{ fontFamily: "'DM Mono', monospace", color: '#f97316' }}>
-            0 F
+            {fmtK(stats.cout_production_total || 0)} F
           </div>
           <div className="text-xs text-muted-foreground mt-1">
             Basé sur fiches techniques
@@ -5204,6 +5204,7 @@ function App() {
     ca_total: 0,
     avg_food_cost: 0,
     avg_bev_cost: 0,
+    cout_production_total: 0,
     top_ventes: []
   });
   const [restaurantStats, setRestaurantStats] = useState([]);
