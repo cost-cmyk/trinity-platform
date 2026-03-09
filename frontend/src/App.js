@@ -3032,50 +3032,6 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                 />
                 
                 {produitsResults.length > 0 && (
-
-
-            {/* Touches PSW */}
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                🎯 Touches PSW (noms des produits dans les ventes)
-              </label>
-              <input
-                type="text"
-                value={form.touches_psw?.join(', ') || ''}
-                onChange={(e) => {
-                  const touches = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
-                  setForm({...form, touches_psw: touches});
-                }}
-                placeholder="Ex: CORONA 33, BIERE CORONA, CORONA BTL"
-                className="w-full p-2 rounded border bg-background text-foreground"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Séparez les touches par des virgules. Utilisé pour matcher automatiquement les ventes avec cette fiche.
-              </p>
-              {form.touches_psw && form.touches_psw.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {form.touches_psw.map((touche, idx) => (
-                    <span 
-                      key={idx} 
-                      className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-sm flex items-center gap-1"
-                    >
-                      {touche}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newTouches = form.touches_psw.filter((_, i) => i !== idx);
-                          setForm({...form, touches_psw: newTouches});
-                        }}
-                        className="hover:text-red-400"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
                   <div className="absolute z-10 w-full mt-1 bg-background border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
                     {produitsResults.map(prod => (
                       <button
@@ -3098,6 +3054,53 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
               
               {form.linked_produit_ids.length === 0 && (
                 <p className="text-xs text-amber-500 mt-2">⚠️ Rattachez au moins un produit carte pour enregistrer</p>
+              )}
+            </div>
+          )}
+
+          {/* Touches PSW */}
+          {form.type_fiche === "produit_fini" && (
+            <div className="trinity-card">
+              <h3 className="font-semibold mb-2">🎯 Touches PSW</h3>
+              <p className="text-xs text-muted-foreground mb-4">
+                Noms des produits dans les fichiers de ventes (séparés par virgules)
+              </p>
+              
+              <input
+                type="text"
+                value={form.touches_psw?.join(', ') || ''}
+                onChange={(e) => {
+                  const touches = e.target.value.split(',').map(t => t.trim()).filter(Boolean);
+                  setForm({...form, touches_psw: touches});
+                }}
+                placeholder="Ex: CORONA 33, BIERE CORONA, CORONA BTL"
+                className="trinity-input"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Utilisé pour matcher automatiquement les ventes avec cette fiche technique
+              </p>
+              
+              {form.touches_psw && form.touches_psw.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {form.touches_psw.map((touche, idx) => (
+                    <span 
+                      key={idx} 
+                      className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-sm flex items-center gap-1"
+                    >
+                      {touche}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newTouches = form.touches_psw.filter((_, i) => i !== idx);
+                          setForm({...form, touches_psw: newTouches});
+                        }}
+                        className="hover:text-red-400"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
           )}
