@@ -2304,6 +2304,9 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
     photo_url: null
   });
   
+  const [touchesPswSuggestions, setTouchesPswSuggestions] = useState([]);
+
+  
   // États pour l'ajout d'ingrédients
   const [ingredientTab, setIngredientTab] = useState("achat"); // "achat" ou "sous_fiche"
   const [achatsSearch, setAchatsSearch] = useState("");
@@ -2419,7 +2422,6 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
     if (!form.restaurant_id) {
       console.log("❌ Pas de restaurant sélectionné");
       setAchatsResults([]);
-  const [touchesPswSuggestions, setTouchesPswSuggestions] = useState([]);
 
       return;
     }
@@ -2733,7 +2735,6 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
       };
       if (editingId) {
         await axios.put(`${API}/fiches/${editingId}`, data);
-  const [touchesPswSuggestions, setTouchesPswSuggestions] = React.useState([]);
 
         toast.success("Fiche mise à jour");
       } else {
