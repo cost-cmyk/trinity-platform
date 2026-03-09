@@ -7,8 +7,8 @@ import logging
 import io
 import re
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Optional
+from pydantic import BaseModel, Field, ConfigDict, field_validator
+from typing import List, Optional, Union
 import uuid
 from datetime import datetime, timezone, timedelta
 from dateutil.relativedelta import relativedelta
@@ -142,9 +142,22 @@ class ProduitBase(BaseModel):
     prix_vente: float
     is_food: bool = True  # True=Nourriture, False=Boisson
     description: Optional[str] = ""
-    touches_psw: List[str] = []  # Touches caisse PSW (liste pour matching)
+    touches_psw: Union[List[str], str, None] = []  # Compatible ancienne/nouvelle version
     fiche_technique_id: Optional[str] = None
     actif: bool = True
+    
+    @field_validator('touches_psw', mode='before')
+    @classmethod
+    def normalize_touches_psw(cls, v):
+        """Convertir touches_psw en liste, quelle que soit la source"""
+        if v is None or v == "":
+            return []
+        if isinstance(v, str):
+            # Si c'est une string, la splitter par virgules
+            return [t.strip() for t in v.split(',') if t.strip()]
+        if isinstance(v, list):
+            return v
+        return []
 
 class ProduitCreate(ProduitBase):
     pass
