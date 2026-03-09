@@ -2671,7 +2671,9 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
                       <div className={`font-mono text-lg ${getFoodCostColor(fiche.food_cost_pct)}`}>
                         {fmtPct(fiche.food_cost_pct)}
                       </div>
-                      <div className="text-xs text-muted-foreground">Food Cost</div>
+                      <div className="text-xs text-muted-foreground">
+                        {fiche.is_food ? "Food Cost" : "Bev Cost"}
+                      </div>
                     </div>
                     <Pill type={fiche.statut === "fait" ? "success" : "warning"}>
                       {fiche.statut === "fait" ? "Fait" : "Brouillon"}

@@ -341,9 +341,10 @@ async def get_fiche(fiche_id: str):
 @api_router.post("/fiches", response_model=FicheTechnique)
 async def create_fiche(data: FicheTechniqueCreate):
     fiche_dict = data.model_dump()
-    # Calculer cout_ligne pour chaque ingrédient
+    # Calculer cout_ligne pour chaque ingrédient SEULEMENT s'il n'est pas déjà fourni
     for ing in fiche_dict.get("ingredients", []):
-        ing["cout_ligne"] = round(ing.get("quantite", 0) * ing.get("prix_unitaire", 0), 2)
+        if "cout_ligne" not in ing or ing["cout_ligne"] is None:
+            ing["cout_ligne"] = round(ing.get("quantite", 0) * ing.get("prix_unitaire", 0), 2)
     # Calculer coûts
     costs = calculate_fiche_costs(fiche_dict)
     fiche = FicheTechnique(**fiche_dict, **costs)
@@ -357,9 +358,10 @@ async def update_fiche(fiche_id: str, data: FicheTechniqueCreate):
     if not existing:
         raise HTTPException(status_code=404, detail="Fiche technique non trouvée")
     fiche_dict = data.model_dump()
-    # Calculer cout_ligne pour chaque ingrédient
+    # Calculer cout_ligne pour chaque ingrédient SEULEMENT s'il n'est pas déjà fourni
     for ing in fiche_dict.get("ingredients", []):
-        ing["cout_ligne"] = round(ing.get("quantite", 0) * ing.get("prix_unitaire", 0), 2)
+        if "cout_ligne" not in ing or ing["cout_ligne"] is None:
+            ing["cout_ligne"] = round(ing.get("quantite", 0) * ing.get("prix_unitaire", 0), 2)
     # Calculer coûts
     costs = calculate_fiche_costs(fiche_dict)
     fiche_dict.update(costs)
