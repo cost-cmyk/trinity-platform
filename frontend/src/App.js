@@ -2301,6 +2301,7 @@ const FichesModule = ({ restaurants, fiches, produits, onRefresh }) => {
     statut: "brouillon", 
     ingredients: [],
     linked_produit_ids: [], // Produits de la carte rattachés
+    touches_psw: [], // Touches PSW pour le matching avec les ventes
     photo_url: null
   });
   
